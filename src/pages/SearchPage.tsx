@@ -56,7 +56,7 @@ export const SearchPage = ({colors, onBack, onSearch}: SearchPageProps) => {
           <TextInput
             value={inputText}
             onChangeText={setInputText}
-            placeholder="单关键词多单词用_连接，多个关键词用空格隔开"
+            placeholder="单关键词多单词用_连接 多个关键词用空格分隔"
             placeholderTextColor={colors.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 6,
     paddingHorizontal: 12,
-    fontSize: 15,
+    fontSize: 14,
   },
   history: {
     paddingHorizontal: 12,

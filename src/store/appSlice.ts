@@ -7,6 +7,7 @@ import type {
   SiteConfig,
   ThemeName,
 } from '../tools/types';
+import {loadStoredSettings, loadStoredTheme} from '../storage/setting';
 
 type AppState = {
   site: SiteConfig;
@@ -25,8 +26,8 @@ const defaultSettings: AppSettings = {
 
 const initialState: AppState = {
   site: HERPY_SITE,
-  theme: 'light',
-  settings: defaultSettings,
+  theme: loadStoredTheme('light'),
+  settings: loadStoredSettings(defaultSettings),
   selectedAlbumHref: null,
   upNextCache: [],
   searchHistory: [],
