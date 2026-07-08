@@ -2,6 +2,8 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Image,
   PanResponder,
+  PermissionsAndroid,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +11,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import ImageViewing from 'react-native-image-viewing';
 import {apiGetImageDetail, apiGetSingleImgUrl} from '../apis/apiHerpy';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
@@ -44,6 +48,8 @@ export const ImageDetailPage = ({
   const [loadFail, setLoadFail] = useState(false);
   const [rawLoading, setRawLoading] = useState(false);
   const [displayRaw, setDisplayRaw] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [rawDownloading, setRawDownloading] = useState(false);
   const [message, setMessage] = useState('');
   const [loadFailMsg, setLoadFailMsg] = useState('');
 
@@ -184,11 +190,75 @@ export const ImageDetailPage = ({
   };
 
   const metadata = detail ? buildMetadata(detail) : null;
+
+  const downloadRawImage = async () => {
+    if (!detailRef.current || rawDownloading) {
+      return;
+    }
+
+    setRawDownloading(true);
+    setMessage('');
+    try {
+      const hasPermission = await ensureDownloadPermission();
+      if (!hasPermission) {
+        setMessage('没有下载文件权限');
+        return;
+      }
+
+      const rawSrc = await resolveRawImage(detailRef.current);
+      if (!rawSrc) {
+        setMessage('图片地址加载失败');
+        return;
+      }
+
+      detailRef.current.fullSrc = rawSrc;
+      setDetail({...detailRef.current});
+
+      const rawUri = absoluteImageUrl(rawSrc, site);
+      const fileName = buildDownloadFileName(metadata?.filename, rawUri);
+      const mime = getImageMimeType(fileName);
+
+      if (Platform.OS === 'android') {
+        await ReactNativeBlobUtil.config({
+          addAndroidDownloads: {
+            useDownloadManager: true,
+            notification: true,
+            mediaScannable: true,
+            storeInDownloads: true,
+            title: fileName,
+            description: 'Herpy Image',
+            mime,
+            path: `${ReactNativeBlobUtil.fs.dirs.DownloadDir}/${fileName}`,
+          },
+        }).fetch('GET', rawUri);
+      } else {
+        await ReactNativeBlobUtil.config({
+          path: `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${fileName}`,
+        }).fetch('GET', rawUri);
+      }
+
+      setMessage(
+        Platform.OS === 'android'
+          ? '图片已下载到下载目录'
+          : '图片已保存到应用目录',
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '图片下载失败');
+    } finally {
+      setRawDownloading(false);
+    }
+  };
+
   const imageSource = detail
     ? displayRaw && detail.fullSrc
       ? detail.fullSrc
       : detail.normalSrc
     : currentImage.album;
+  const imageUri = absoluteImageUrl(imageSource, site);
+  const previewImages = useMemo(
+    () => (imageUri ? [{uri: imageUri}] : []),
+    [imageUri],
+  );
   const imageRatio = detail?.height && detail.width ? detail.height / detail.width : 1;
   const imageHeight = Math.max(220, Math.round((width - 16) * imageRatio));
   const pageStyle = {backgroundColor: colors.background};
@@ -218,7 +288,11 @@ export const ImageDetailPage = ({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Pressable onPress={() => setDisplayRaw(false)}>
+          <Pressable
+            accessibilityRole="imagebutton"
+            disabled={!imageUri}
+            onPress={() => setPreviewVisible(true)}
+          >
             <ThumbnailImage
               src={imageSource}
               colors={colors}
@@ -235,33 +309,44 @@ export const ImageDetailPage = ({
           </Text>
 
           <View style={[styles.controlBox, controlBoxStyle]}>
-            <ActionButton
-              label="上一张"
-              colors={colors}
-              onPress={() => switchImage('prev')}
-            />
-            {metadata?.displayed ? (
-              <View style={[styles.viewCount, viewCountStyle]}>
-                <Text style={[styles.viewCountText, viewCountTextStyle]}>
-                  浏览量：{metadata.displayed}
-                </Text>
-              </View>
-            ) : null}
-            <ActionButton
-              label={
-                rawLoading ? '加载中' : displayRaw ? '已显示原图' : '查看原图'
-              }
-              colors={colors}
-              accent
-              disabled={rawLoading}
-              onPress={showRawImage}
-            />
-            <ActionButton
-              label="下一张"
-              colors={colors}
-              onPress={() => switchImage('next')}
-            />
+            <View style={[styles.controlView]}>
+              <ActionButton
+                label="上一张"
+                colors={colors}
+                onPress={() => switchImage('prev')}
+              />
+              <ActionButton
+                label={rawDownloading ? '下载中' : '下载原图'}
+                colors={colors}
+                disabled={rawLoading || rawDownloading}
+                onPress={downloadRawImage}
+              />
+            </View>
+            <View style={[styles.controlView]}>
+              <ActionButton
+                label={
+                  rawLoading ? '加载中' : displayRaw ? '已显示原图' : '查看原图'
+                }
+                colors={colors}
+                accent
+                disabled={rawLoading}
+                onPress={showRawImage}
+              />
+              <ActionButton
+                label="下一张"
+                colors={colors}
+                onPress={() => switchImage('next')}
+              />
+            </View>
           </View>
+
+          {metadata?.displayed ? (
+            <View style={[styles.viewCountRow, viewCountStyle]}>
+              <Text style={[styles.viewCountText, viewCountTextStyle]}>
+                浏览量：{metadata.displayed}
+              </Text>
+            </View>
+          ) : null}
 
           {message ? (
             <Text style={[styles.message, messageStyle]}>{message}</Text>
@@ -291,6 +376,14 @@ export const ImageDetailPage = ({
           ) : null}
         </ScrollView>
       )}
+      <ImageViewing
+        images={previewImages}
+        imageIndex={0}
+        visible={previewVisible}
+        onRequestClose={() => setPreviewVisible(false)}
+        swipeToCloseEnabled
+        doubleTapToZoomEnabled
+      />
     </View>
   );
 };
@@ -321,6 +414,71 @@ const toNames = (value: string | LinkValue[] | undefined) => {
     return value.map(item => item.name).filter(Boolean);
   }
   return String(value) ? [String(value)] : [];
+};
+
+const ensureDownloadPermission = async () => {
+  if (Platform.OS !== 'android') {
+    return true;
+  }
+
+  const androidVersion = Number(Platform.Version);
+  if (Number.isFinite(androidVersion) && androidVersion >= 29) {
+    return true;
+  }
+
+  const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
+  const hasPermission = await PermissionsAndroid.check(permission);
+  if (hasPermission) {
+    return true;
+  }
+
+  const result = await PermissionsAndroid.request(permission);
+  return result === PermissionsAndroid.RESULTS.GRANTED;
+};
+
+const buildDownloadFileName = (filename: string | undefined, uri: string) => {
+  const urlFileName = getFileNameFromUrl(uri);
+  const baseName = sanitizeFileName(filename || urlFileName || 'herpy-image');
+  if (hasImageExtension(baseName)) {
+    return baseName;
+  }
+
+  return `${baseName}${getImageExtension(urlFileName) || '.jpg'}`;
+};
+
+const getFileNameFromUrl = (uri: string) => {
+  const segment = uri.split('#')[0].split('?')[0].split('/').pop() ?? '';
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+};
+
+const sanitizeFileName = (filename: string) =>
+  filename.replace(/[\\/:*?"<>|]/g, '_').trim() || 'herpy-image';
+
+const getImageExtension = (filename: string) => {
+  const match = filename.match(/\.(jpe?g|png|gif|webp|bmp)$/i);
+  return match ? match[0].toLowerCase() : '';
+};
+
+const hasImageExtension = (filename: string) => Boolean(getImageExtension(filename));
+
+const getImageMimeType = (filename: string) => {
+  const extension = getImageExtension(filename);
+  switch (extension) {
+    case '.png':
+      return 'image/png';
+    case '.gif':
+      return 'image/gif';
+    case '.webp':
+      return 'image/webp';
+    case '.bmp':
+      return 'image/bmp';
+    default:
+      return 'image/jpeg';
+  }
 };
 
 const InfoSection = ({
@@ -440,8 +598,13 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: 6,
+  },
+  controlView:{
+    flexDirection: 'row',
+    gap:6
   },
   actionButton: {
     minWidth: 64,
@@ -455,9 +618,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
-  viewCount: {
-    minHeight: 40,
-    flex: 1,
+  viewCountRow: {
+    minHeight: 34,
+    marginHorizontal: 8,
+    marginBottom: 6,
     borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
