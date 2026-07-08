@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   Animated,
   Image,
@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import type {ThemeColors} from '../tools/theme';
 
-const avatar = require('../assets/img/default_avatar.png');
+const avatar = require('../assets/img/icon.png');
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type SideMenuProps = {
   open: boolean;
@@ -30,26 +31,71 @@ export const SideMenu = ({
   const {width} = useWindowDimensions();
   const menuWidth = Math.min(width * 0.78, 320);
   const translateX = useRef(new Animated.Value(-menuWidth)).current;
+  const maskOpacity = useRef(new Animated.Value(0)).current;
+  const [shouldRender, setShouldRender] = useState(open);
 
   useEffect(() => {
-    Animated.timing(translateX, {
-      toValue: open ? 0 : -menuWidth,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-  }, [menuWidth, open, translateX]);
+    let animationFrame: number | null = null;
 
-  if (!open) {
+    if (open) {
+      setShouldRender(true);
+      animationFrame = requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(maskOpacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    } else {
+      Animated.parallel([
+        Animated.timing(maskOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateX, {
+          toValue: -menuWidth,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(({finished}) => {
+        if (finished) {
+          setShouldRender(false);
+        }
+      });
+    }
+
+    return () => {
+      if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [open, menuWidth, translateX, maskOpacity]);
+
+  if (!shouldRender) {
     return null;
   }
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <Pressable
+      <AnimatedPressable
         accessibilityRole="button"
         accessibilityLabel="关闭菜单"
         onPress={onClose}
-        style={[styles.mask, {backgroundColor: colors.overlay}]}
+        style={[
+          styles.mask,
+          {
+            backgroundColor: colors.overlay,
+            opacity: maskOpacity,
+          },
+        ]}
       />
       <Animated.View
         style={[
@@ -139,7 +185,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 58,
     height: 58,
-    borderRadius: 29,
+    borderRadius: 4,
   },
   profileText: {
     flex: 1,
