@@ -1,23 +1,11 @@
 import {HERPY_SITE} from '../tools/static';
 import type {SearchConfig, SiteConfig} from '../tools/types';
+import {normalizePath, request} from './request';
+import type {ApiResponse} from './request';
 
-export type ApiResponse = {
-  statusCode: number;
-  data: string;
-};
-
-const DEFAULT_TIMEOUT = 30000;
+export type {ApiResponse} from './request';
 
 const stripHash = (href: string) => href.split('#')[0];
-
-const normalizePath = (href: string, site: SiteConfig) => {
-  const withoutSite = href
-    .replace(site.baseUrl, '')
-    .replace(site.baseGalleryUrl, '')
-    .replace(/^\/+/, '');
-
-  return withoutSite.replace(/&amp;/g, '&');
-};
 
 const appendPage = (href: string, page: number) => {
   const cleaned = href
@@ -30,52 +18,93 @@ const appendPage = (href: string, page: number) => {
   return `${cleaned}${joiner}page=${page}`;
 };
 
-const request = async (
-  href: string,
-  site: SiteConfig = HERPY_SITE,
-): Promise<ApiResponse> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
-  const path = normalizePath(href, site);
-  const url = `${site.baseUrl}/${path}`;
+const formEncode = (data: Record<string, string>) =>
+  Object.entries(data)
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+    )
+    .join('&');
 
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: {
-        // Herpy/Coppermine returns old table HTML. A browser-like Accept header
-        // avoids some hosts returning a compressed or alternate body.
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    });
-    const data = await response.text();
+const stripHtml = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-    return {
-      statusCode: response.status,
-      data,
-    };
-  } finally {
-    clearTimeout(timeout);
-  }
+const extractCpgMessage = (html: string) => {
+  const match = html.match(
+    /<div\b(?=[^>]*\bid=["']cpgMessage["'])[^>]*>([\s\S]*?)<\/div>/i,
+  );
+
+  return {
+    className: match?.[0].match(/\bclass=["']([^"']+)["']/i)?.[1] ?? '',
+    message: match ? stripHtml(match[1]) : '',
+  };
 };
 
-export const apiMainPage = (site?: SiteConfig) => request('', site);
+export type LoginResult = ApiResponse & {
+  success: boolean;
+  message: string;
+};
+
+export const apiLogin = async (
+  username: string,
+  password: string,
+  site: SiteConfig = HERPY_SITE,
+  referer = `${site.baseUrl}/`,
+): Promise<LoginResult> => {
+  const response = await request(
+    `${site.baseUrl}/login.php?referer=${encodeURIComponent(referer)}`,
+    {
+      method: 'POST',
+      site,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      data: formEncode({
+        username,
+        password,
+        submitted: 'OK',
+        remember_me: '1',
+      }),
+    },
+  );
+  const cpgMessage = extractCpgMessage(response.data);
+  const success =
+    /cpg_message_success/i.test(cpgMessage.className) ||
+    /Welcome\s+/i.test(cpgMessage.message);
+
+  return {
+    ...response,
+    success,
+    message:
+      cpgMessage.message ||
+      (success ? 'Login succeeded.' : 'Login failed. Try again.'),
+  };
+};
+
+export const apiMainPage = (site?: SiteConfig) => request('', {site});
 
 export const apiClassificationPage = (href: string, site?: SiteConfig) =>
-  request(href, site);
+  request(href, {site});
 
 export const apiClassificationSwitchPage = (
   href: string,
   page = 1,
   site: SiteConfig = HERPY_SITE,
-) => request(appendPage(normalizePath(href, site), Math.max(1, page)), site);
+) =>
+  request(appendPage(normalizePath(href, site), Math.max(1, page)), {site});
 
 export const apiGetImageDetail = (href: string, site: SiteConfig = HERPY_SITE) =>
-  request(stripHash(href), site);
+  request(stripHash(href), {site});
 
 export const apiGetSingleImgUrl = (href: string, site?: SiteConfig) =>
-  request(href, site);
+  request(href, {site});
 
 export const apiSearch = (
   keyword: string[],
@@ -96,5 +125,5 @@ export const apiSearch = (
     })
     .join('&');
 
-  return request(`thumbnails.php?search=${encodedKeyword}&${params}`, site);
+  return request(`thumbnails.php?search=${encodedKeyword}&${params}`, {site});
 };
