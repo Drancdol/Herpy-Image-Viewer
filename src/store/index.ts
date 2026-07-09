@@ -1,6 +1,7 @@
 import {configureStore, createListenerMiddleware} from '@reduxjs/toolkit';
 import {appActions, appReducer} from './appSlice';
 import {saveStoredSetting, saveStoredTheme} from '../storage/setting';
+import {userReducer} from './user';
 
 const listenerMiddleware = createListenerMiddleware();
 //设置三项更新中间件 存储设置
@@ -21,6 +22,7 @@ listenerMiddleware.startListening({
 export const store = configureStore({
   reducer: {
     app: appReducer,
+    user: userReducer,
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware().prepend(listenerMiddleware.middleware),
@@ -30,3 +32,4 @@ export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
 export {appActions, createSearchConfig} from './appSlice';
+export {userActions} from './user';

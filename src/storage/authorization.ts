@@ -2,7 +2,36 @@ import {storage} from './mmkvStorage';
 
 const authorizationCookiesKey = 'authorization.cookies';
 
-type CookieMap = Record<string, string>;
+type CookieEntry = {
+  value: string;
+  expiresAt?: number;
+};
+
+type CookieMap = Record<string, CookieEntry>;
+
+const normalizeCookieEntry = (value: unknown): CookieEntry | null => {
+  if (typeof value === 'string') {
+    return value ? {value} : null;
+  }
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const rawValue = (value as {value?: unknown}).value;
+  const rawExpiresAt = (value as {expiresAt?: unknown}).expiresAt;
+  if (typeof rawValue !== 'string' || !rawValue) {
+    return null;
+  }
+
+  return {
+    value: rawValue,
+    expiresAt:
+      typeof rawExpiresAt === 'number' && Number.isFinite(rawExpiresAt)
+        ? rawExpiresAt
+        : undefined,
+  };
+};
 
 const loadCookieMap = (): CookieMap => {
   const raw = storage.getString(authorizationCookiesKey);
@@ -12,15 +41,28 @@ const loadCookieMap = (): CookieMap => {
 
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed
-      : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return Object.entries(parsed).reduce<CookieMap>((acc, [name, value]) => {
+      const entry = normalizeCookieEntry(value);
+      if (entry) {
+        acc[name] = entry;
+      }
+      return acc;
+    }, {});
   } catch {
     return {};
   }
 };
 
 const saveCookieMap = (cookies: CookieMap) => {
+  if (!Object.keys(cookies).length) {
+    storage.remove(authorizationCookiesKey);
+    return;
+  }
+
   storage.set(authorizationCookiesKey, JSON.stringify(cookies));
 };
 
@@ -47,18 +89,30 @@ const normalizeSetCookieHeaders = (setCookie: unknown): string[] => {
   return [];
 };
 
-const isExpiredCookie = (header: string): boolean => {
-  if (/;\s*max-age=0(?:;|$)/i.test(header)) {
-    return true;
+const parseCookieExpiresAt = (header: string): number | undefined => {
+  const maxAge = header.match(/;\s*max-age=(-?\d+)(?:;|$)/i)?.[1];
+  if (maxAge) {
+    const seconds = Number(maxAge);
+    if (Number.isFinite(seconds)) {
+      return Date.now() + seconds * 1000;
+    }
   }
 
   const expires = header.match(/;\s*expires=([^;]+)/i)?.[1];
   if (!expires) {
-    return false;
+    return undefined;
   }
 
   const expiresAt = Date.parse(expires);
-  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
+  return Number.isFinite(expiresAt) ? expiresAt : undefined;
+};
+
+const isCookieEntryExpired = (cookie: CookieEntry): boolean =>
+  typeof cookie.expiresAt === 'number' && cookie.expiresAt <= Date.now();
+
+const isExpiredCookie = (header: string): boolean => {
+  const expiresAt = parseCookieExpiresAt(header);
+  return typeof expiresAt === 'number' && expiresAt <= Date.now();
 };
 
 export const saveAuthorizationCookies = (setCookie: unknown): void => {
@@ -85,7 +139,10 @@ export const saveAuthorizationCookies = (setCookie: unknown): void => {
     if (isExpiredCookie(header)) {
       delete cookies[name];
     } else {
-      cookies[name] = value;
+      cookies[name] = {
+        value,
+        expiresAt: parseCookieExpiresAt(header),
+      };
     }
   });
 
@@ -95,9 +152,36 @@ export const saveAuthorizationCookies = (setCookie: unknown): void => {
 export const getAuthorizationCookieHeader = (): string => {
   const cookies = loadCookieMap();
   return Object.entries(cookies)
-    .filter(([, value]) => value.length > 0)
-    .map(([name, value]) => `${name}=${value}`)
+    .filter(([, entry]) => entry.value.length > 0 && !isCookieEntryExpired(entry))
+    .map(([name, entry]) => `${name}=${entry.value}`)
     .join('; ');
+};
+
+export const hasAuthorizationCookies = (): boolean =>
+  getAuthorizationCookieHeader().length > 0;
+
+export const clearExpiredAuthorizationCookies = (): boolean => {
+  const cookies = loadCookieMap();
+  let changed = false;
+
+  const nextCookies = Object.entries(cookies).reduce<CookieMap>(
+    (acc, [name, entry]) => {
+      if (isCookieEntryExpired(entry)) {
+        changed = true;
+        return acc;
+      }
+
+      acc[name] = entry;
+      return acc;
+    },
+    {},
+  );
+
+  if (changed) {
+    saveCookieMap(nextCookies);
+  }
+
+  return changed;
 };
 
 export const clearAuthorizationCookies = (): void => {

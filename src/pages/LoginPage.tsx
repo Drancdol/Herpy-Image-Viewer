@@ -11,38 +11,36 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {apiLogin} from '../apis/apiHerpy';
+import {apiLogin} from '../apis/auth';
 import {AppHeader} from '../component/AppHeader';
-import {useAppSelector} from '../store/hooks';
+import {toast} from '../component/Toast';
+import {userActions} from '../store';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';
 
 type LoginPageProps = {
   colors: ThemeColors;
   onBack: () => void;
+  onSuccess: () => void;
 };
 
-type MessageType = 'success' | 'error' | 'info';
-
-export const LoginPage = ({colors, onBack}: LoginPageProps) => {
+export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
+  const dispatch = useAppDispatch();
   const site = useAppSelector(state => state.app.site);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState<MessageType>('info');
 
   const canSubmit = Boolean(username.trim() && password && !submitting);
 
   const submitLogin = async () => {
     const normalizedUsername = username.trim();
     if (!normalizedUsername || !password) {
-      setMessageType('error');
-      setMessage('请输入用户名/邮箱和密码');
+      toast.error('请输入用户名/邮箱和密码');
       return;
     }
 
     setSubmitting(true);
-    setMessage('');
     try {
       const result = await apiLogin(
         normalizedUsername,
@@ -51,14 +49,19 @@ export const LoginPage = ({colors, onBack}: LoginPageProps) => {
         `${site.baseUrl}/`,
       );
 
-      setMessageType(result.success ? 'success' : 'error');
-      setMessage(result.message);
       if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+
+      if (result.success) {
+        dispatch(userActions.setLoggedIn(true));
         setPassword('');
+        onSuccess();
       }
     } catch (error) {
-      setMessageType('error');
-      setMessage(error instanceof Error ? error.message : '登录请求失败');
+      toast.error(error instanceof Error ? error.message : '登录请求失败');
     } finally {
       setSubmitting(false);
     }
@@ -72,16 +75,8 @@ export const LoginPage = ({colors, onBack}: LoginPageProps) => {
       return;
     }
 
-    setMessageType('error');
-    setMessage('无法打开注册链接');
+    toast.error('无法打开注册链接');
   };
-
-  const messageColor =
-    messageType === 'success'
-      ? colors.primary
-      : messageType === 'error'
-        ? colors.danger
-        : colors.textMuted;
 
   return (
     <View style={[styles.page, {backgroundColor: colors.background}]}>
@@ -139,12 +134,6 @@ export const LoginPage = ({colors, onBack}: LoginPageProps) => {
               ]}
               value={password}
             />
-
-            {message ? (
-              <Text style={[styles.message, {color: messageColor}]}>
-                {message}
-              </Text>
-            ) : null}
 
             <View style={styles.actions}>
               <Pressable
@@ -220,11 +209,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 12,
     fontSize: 16,
-  },
-  message: {
-    marginBottom: 16,
-    fontSize: 14,
-    lineHeight: 20,
   },
   actions: {
     gap: 12,

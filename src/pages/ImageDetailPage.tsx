@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import ImageViewing from 'react-native-image-viewing';
-import {apiGetImageDetail, apiGetSingleImgUrl} from '../apis/apiHerpy';
+import {apiGetImageDetail, apiGetSingleImgUrl} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {LoadingState} from '../component/LoadingState';

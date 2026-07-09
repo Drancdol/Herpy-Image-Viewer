@@ -1,6 +1,6 @@
 import React, {useCallback} from 'react';
 import {StyleSheet, View} from 'react-native';
-import {apiSearch} from '../apis/apiHerpy';
+import {apiSearch} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';

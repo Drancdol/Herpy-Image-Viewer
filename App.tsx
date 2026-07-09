@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
   CommonActions,
   DarkTheme,
@@ -11,13 +11,18 @@ import {StatusBar, StyleSheet, View} from 'react-native';
 import {Provider as ReduxProvider} from 'react-redux';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {SideMenu} from './src/component/SideMenu';
+import {toast, ToastHost} from './src/component/Toast';
 import {ImageDetailPage} from './src/pages/ImageDetailPage';
 import {IndexPage} from './src/pages/IndexPage';
 import {LoginPage} from './src/pages/LoginPage';
 import {SearchPage} from './src/pages/SearchPage';
 import {SearchResultPage} from './src/pages/SearchResultPage';
 import {SettingPage} from './src/pages/SettingPage';
-import {appActions, store} from './src/store';
+import {
+  clearExpiredAuthorizationCookies,
+  hasAuthorizationCookies,
+} from './src/storage/authorization';
+import {appActions, store, userActions} from './src/store';
 import {useAppDispatch, useAppSelector} from './src/store/hooks';
 import {getTheme} from './src/tools/theme';
 import type {GalleryImage, SearchConfig} from './src/tools/types';
@@ -49,6 +54,16 @@ function AppShell() {
   const colors = useMemo(() => getTheme(theme), [theme]);
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const expired = clearExpiredAuthorizationCookies();
+    dispatch(userActions.setLoggedIn(hasAuthorizationCookies()));
+
+    if (expired) {
+      toast.info('登录信息已过期');
+    }
+  }, [dispatch]);
+
   const navigationTheme = useMemo(() => {
     const baseTheme = theme === 'dark' ? DarkTheme : DefaultTheme;
 
@@ -114,12 +129,24 @@ function AppShell() {
                 <SettingPage
                   colors={colors}
                   onBack={() => navigation.goBack()}
+                  onLogin={() => navigation.navigate('login')}
                 />
               )}
             </Stack.Screen>
             <Stack.Screen name="login">
               {({navigation}) => (
-                <LoginPage colors={colors} onBack={() => navigation.goBack()} />
+                <LoginPage
+                  colors={colors}
+                  onBack={() => navigation.goBack()}
+                  onSuccess={() =>
+                    navigation.dispatch(
+                      CommonActions.reset({
+                        index: 0,
+                        routes: [{name: 'home'}],
+                      }),
+                    )
+                  }
+                />
               )}
             </Stack.Screen>
             <Stack.Screen name="search">
@@ -162,9 +189,9 @@ function AppShell() {
         colors={colors}
         onClose={() => setMenuOpen(false)}
         onHome={goHome}
-        onLogin={() => navigationRef.navigate('login')}
         onSettings={() => navigationRef.navigate('settings')}
       />
+      <ToastHost colors={colors} />
     </SafeAreaView>
   );
 }

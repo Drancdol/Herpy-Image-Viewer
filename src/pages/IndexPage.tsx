@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import {apiClassificationSwitchPage, apiMainPage} from '../apis/apiHerpy';
+import {apiClassificationSwitchPage, apiMainPage} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {GalleryPage} from './GalleryPage';
