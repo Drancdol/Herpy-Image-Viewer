@@ -2,6 +2,7 @@ export type ThemeName = 'light' | 'dark';
 
 export type RouteName =
   | 'home'
+  | 'login'
   | 'settings'
   | 'imageDetail'
   | 'search'
@@ -9,6 +10,7 @@ export type RouteName =
 
 export type AppRoute =
   | {name: 'home'}
+  | {name: 'login'}
   | {name: 'settings'}
   | {name: 'search'}
   | {name: 'searchResult'; params: {config: SearchConfig}}

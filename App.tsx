@@ -13,6 +13,7 @@ import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {SideMenu} from './src/component/SideMenu';
 import {ImageDetailPage} from './src/pages/ImageDetailPage';
 import {IndexPage} from './src/pages/IndexPage';
+import {LoginPage} from './src/pages/LoginPage';
 import {SearchPage} from './src/pages/SearchPage';
 import {SearchResultPage} from './src/pages/SearchResultPage';
 import {SettingPage} from './src/pages/SettingPage';
@@ -23,6 +24,7 @@ import type {GalleryImage, SearchConfig} from './src/tools/types';
 
 type RootStackParamList = {
   home: undefined;
+  login: undefined;
   settings: undefined;
   search: undefined;
   searchResult: {config: SearchConfig};
@@ -115,6 +117,11 @@ function AppShell() {
                 />
               )}
             </Stack.Screen>
+            <Stack.Screen name="login">
+              {({navigation}) => (
+                <LoginPage colors={colors} onBack={() => navigation.goBack()} />
+              )}
+            </Stack.Screen>
             <Stack.Screen name="search">
               {({navigation}) => (
                 <SearchPage
@@ -155,6 +162,7 @@ function AppShell() {
         colors={colors}
         onClose={() => setMenuOpen(false)}
         onHome={goHome}
+        onLogin={() => navigationRef.navigate('login')}
         onSettings={() => navigationRef.navigate('settings')}
       />
     </SafeAreaView>
