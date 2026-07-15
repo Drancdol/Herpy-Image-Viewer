@@ -32,17 +32,18 @@ const DOUBLE_TAP_DELAY = 200;
 const DOUBLE_TAP_SLOP = 64;
 const TAP_SLOP = 8;
 const DISMISS_DISTANCE = 120;
-const RADIAL_DISTANCE_OFFSET = 96;
+// 双击后的第二击按住时，纵向拖动 96px 对应 1 倍缩放变化。
+const VERTICAL_ZOOM_DISTANCE = 96;
 const PAN_RESISTANCE = 0.35;
 const SCALE_EPSILON = 0.01;
 
 /**
- * 手势状态互斥：空闲、单指拖动、双击后按住的径向缩放，以及双指捏合。
+ * 手势状态互斥：空闲、单指拖动、双击后按住的纵向滑动缩放，以及双指捏合。
  * 使用数值共享值，确保整套判定都能在 Reanimated UI 线程执行。
  */
 const MODE_IDLE = 0;//空闲
 const MODE_PAN = 1;//拖动
-const MODE_RADIAL = 2;//径向
+const MODE_VERTICAL_ZOOM = 2;
 const MODE_PINCH = 3;//双指捏放
 
 const SPRING_CONFIG = {
@@ -169,13 +170,12 @@ export const ZoomImageModal = ({
   const firstTapX = useSharedValue(0);
   const firstTapY = useSharedValue(0);
   const firstTapTime = useSharedValue(-1);
-  const radialStartX = useSharedValue(0);
-  const radialStartY = useSharedValue(0);
-  const radialStartDistance = useSharedValue(0);
-  const radialStartScale = useSharedValue(MIN_SCALE);
-  const radialStartTranslationX = useSharedValue(0);
-  const radialStartTranslationY = useSharedValue(0);
-  const radialMoved = useSharedValue(0);
+  const doubleTapDragStartX = useSharedValue(0);
+  const doubleTapDragStartY = useSharedValue(0);
+  const doubleTapDragStartScale = useSharedValue(MIN_SCALE);
+  const doubleTapDragStartTranslationX = useSharedValue(0);
+  const doubleTapDragStartTranslationY = useSharedValue(0);
+  const doubleTapDragMoved = useSharedValue(0);
   const panStartX = useSharedValue(0);
   const panStartY = useSharedValue(0);
   const panStartTranslationX = useSharedValue(0);
@@ -326,7 +326,7 @@ export const ZoomImageModal = ({
   const imageGesture = Gesture.Manual()
     .onTouchesDown((event, stateManager) => {
       ('worklet');
-      // 识别优先级：双指捏合 > 双击后径向缩放 > 普通单指拖动。
+      // 识别优先级：双指捏合 > 双击后纵向滑动缩放 > 普通单指拖动。
       // Android 模拟器的鼠标左键按下会作为单指触摸到达这里。
       const touches = event.allTouches;
       console.log('开始点击', touches);
@@ -382,22 +382,15 @@ export const ZoomImageModal = ({
       }
 
       if (double) {
-        // 第二击按住时，以第一次点击位置为锚点，用径向距离驱动连续缩放。
-        // 第二次点击后的按住拖动按距首击点的距离调整缩放。
-        console.log('----双指缩放----');
-        interactionMode.value = MODE_RADIAL;
-        radialStartX.value = touch.x;
-        radialStartY.value = touch.y;
-        radialStartDistance.value = distanceBetween(
-          touch.x,
-          touch.y,
-          firstTapX.value,
-          firstTapY.value,
-        );
-        radialStartScale.value = scale.value;
-        radialStartTranslationX.value = translationX.value;
-        radialStartTranslationY.value = translationY.value;
-        radialMoved.value = 0;
+        // 第二击按住时，以第一次点击位置为锚点：上滑缩小，下滑放大。
+        console.log('----单指纵向缩放----');
+        interactionMode.value = MODE_VERTICAL_ZOOM;
+        doubleTapDragStartX.value = touch.x;
+        doubleTapDragStartY.value = touch.y;
+        doubleTapDragStartScale.value = scale.value;
+        doubleTapDragStartTranslationX.value = translationX.value;
+        doubleTapDragStartTranslationY.value = translationY.value;
+        doubleTapDragMoved.value = 0;
         firstTapTime.value = -1;
       } else {
         // 未命中双击时记录平移起点；原始尺寸下不会真正移动图片。
@@ -497,40 +490,34 @@ export const ZoomImageModal = ({
         return;
       }
 
-      if (interactionMode.value === MODE_RADIAL) {
-        // 第二击按住的径向缩放始终围绕第一次点击位置，移动距离越远缩放变化越大。
+      if (interactionMode.value === MODE_VERTICAL_ZOOM) {
+        // 以第二击的纵向位移控制缩放；屏幕坐标向下为正，因此下滑放大、上滑缩小。
         // 双击后的第二次按住拖动：以首次点击位置为锚点缩放。
         if (
           distanceBetween(
             touch.x,
             touch.y,
-            radialStartX.value,
-            radialStartY.value,
+            doubleTapDragStartX.value,
+            doubleTapDragStartY.value,
           ) > TAP_SLOP
         ) {
-          radialMoved.value = 1;
+          doubleTapDragMoved.value = 1;
         }
 
-        const currentDistance = distanceBetween(
-          touch.x,
-          touch.y,
-          firstTapX.value,
-          firstTapY.value,
-        );
+        const verticalDelta = touch.y - doubleTapDragStartY.value;
         const nextScale = clampValue(
-          radialStartScale.value *
-            ((currentDistance + RADIAL_DISTANCE_OFFSET) /
-              (radialStartDistance.value + RADIAL_DISTANCE_OFFSET)),
+          doubleTapDragStartScale.value +
+            verticalDelta / VERTICAL_ZOOM_DISTANCE,
           MIN_SCALE,
           MAX_SCALE,
         );
-        const ratio = nextScale / radialStartScale.value;
+        const ratio = nextScale / doubleTapDragStartScale.value;
         const nextTranslationX =
           (1 - ratio) * (firstTapX.value - viewportWidth.value / 2) +
-          ratio * radialStartTranslationX.value;
+          ratio * doubleTapDragStartTranslationX.value;
         const nextTranslationY =
           (1 - ratio) * (firstTapY.value - viewportHeight.value / 2) +
-          ratio * radialStartTranslationY.value;
+          ratio * doubleTapDragStartTranslationY.value;
         const bounded = constrainTranslation(
           nextTranslationX,
           nextTranslationY,
@@ -581,14 +568,14 @@ export const ZoomImageModal = ({
       ('worklet');
       console.log('点击完毕');
       const touches = event.allTouches;
+      const doubleTapAnchorX = firstTapX.value;
+      const doubleTapAnchorY = firstTapY.value;
 
       //重置
       let double = isSecondTap.value;
       if (double) {
-        console.log('清理双指缩放第一次状态');
+        console.log('清理双击缩放第一次状态');
         firstTapTime.value = -1;
-        firstTapX.value = 0;
-        firstTapY.value = 0;
         isSecondTap.value = false;
       }
       if (touches.length > 0) {
@@ -606,9 +593,9 @@ export const ZoomImageModal = ({
 
       const mode = interactionMode.value;
       // 收手时按当前模式决定：切换缩放、下拉关闭、回弹，或等待双击判定。
-      if (mode === MODE_RADIAL) {
-        if (radialMoved.value === 0) {
-          toggleZoomAt(firstTapX.value, firstTapY.value);
+      if (mode === MODE_VERTICAL_ZOOM) {
+        if (doubleTapDragMoved.value === 0) {
+          toggleZoomAt(doubleTapAnchorX, doubleTapAnchorY);
         } else {
           settleTransform();
         }
@@ -652,6 +639,10 @@ export const ZoomImageModal = ({
         }
       }
 
+      if (double) {
+        firstTapX.value = 0;
+        firstTapY.value = 0;
+      }
       interactionMode.value = MODE_IDLE;
       stateManager.end();
     })
