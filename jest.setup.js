@@ -31,10 +31,13 @@ jest.mock('react-native', () => ({
     event: jest.fn((_mapping, config) => (...args) => {
       config?.listener?.(...args);
     }),
+    parallel: jest.fn(() => ({
+      start: jest.fn(callback => callback?.({finished: true})),
+    })),
     Text: mockComponent('Animated.Text'),
     View: mockComponent('Animated.View'),
     timing: jest.fn(() => ({
-      start: jest.fn(callback => callback && callback()),
+      start: jest.fn(callback => callback?.({finished: true})),
     })),
   },
   BackHandler: {
@@ -61,6 +64,7 @@ jest.mock('react-native', () => ({
     openURL: jest.fn(() => Promise.resolve()),
     removeEventListener: jest.fn(),
   },
+  Modal: mockComponent('Modal'),
   PanResponder: {
     create: jest.fn(handlers => ({panHandlers: handlers})),
   },
@@ -105,6 +109,85 @@ jest.mock('react-native', () => ({
     value: initialValue,
   })),
   useWindowDimensions: jest.fn(() => ({width: 390, height: 844})),
+}));
+
+jest.mock('react-native-reanimated', () => {
+  const {Image: ReanimatedImage, Text: ReanimatedText, View: ReanimatedView} =
+    require('react-native');
+  const passthroughAnimation = value => value;
+
+  return {
+    __esModule: true,
+    cancelAnimation: jest.fn(),
+    default: {
+      Image: ReanimatedImage,
+      Text: ReanimatedText,
+      View: ReanimatedView,
+      createAnimatedComponent: component => component,
+    },
+    runOnJS: callback => callback,
+    setUpTests: jest.fn(),
+    useAnimatedStyle: jest.fn(styleFactory => styleFactory()),
+    useSharedValue: jest.fn(initialValue => ({value: initialValue})),
+    withDelay: jest.fn((_delay, animation) => animation),
+    withSpring: jest.fn(passthroughAnimation),
+    withTiming: jest.fn((value, _config, callback) => {
+      callback?.(true);
+      return value;
+    }),
+  };
+});
+
+const mockManualGesture = () => {
+  const gesture = {};
+  [
+    'onTouchesDown',
+    'onTouchesMove',
+    'onTouchesUp',
+    'onTouchesCancelled',
+  ].forEach(method => {
+    gesture[method] = () => gesture;
+  });
+  return gesture;
+};
+
+jest.mock('react-native-gesture-handler', () => ({
+  Gesture: {
+    Manual: mockManualGesture,
+  },
+  GestureDetector: mockComponent('GestureDetector'),
+  GestureHandlerRootView: mockComponent('GestureHandlerRootView'),
+}));
+
+jest.mock('react-native-blob-util', () => ({
+  __esModule: true,
+  default: {
+    config: jest.fn(() => ({fetch: jest.fn()})),
+    fs: {
+      dirs: {
+        DocumentDir: '/documents',
+        DownloadDir: '/downloads',
+      },
+    },
+  },
+}));
+
+const mockMmkvValues = new Map();
+
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: jest.fn(() => ({
+    clearAll: jest.fn(() => mockMmkvValues.clear()),
+    getBoolean: jest.fn(key => {
+      const value = mockMmkvValues.get(key);
+      return typeof value === 'boolean' ? value : undefined;
+    }),
+    getString: jest.fn(key => {
+      const value = mockMmkvValues.get(key);
+      return typeof value === 'string' ? value : undefined;
+    }),
+    remove: jest.fn(key => mockMmkvValues.delete(key)),
+    set: jest.fn((key, value) => mockMmkvValues.set(key, value)),
+  })),
 }));
 
 jest.mock('react-native-screens', () => ({

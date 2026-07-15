@@ -85,6 +85,12 @@ android {
         versionCode 1
         versionName "1.0"
         manifestPlaceholders = [usesCleartextTraffic: "true"]
+        externalNativeBuild {
+            cmake {
+                // 在现有参数后面追加这一行
+                arguments "-DCMAKE_OBJECT_PATH_MAX=260"
+            }
+        }
     }
     signingConfigs {
         debug {

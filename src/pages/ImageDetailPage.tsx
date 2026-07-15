@@ -12,12 +12,12 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
-import ImageViewing from 'react-native-image-viewing';
 import {apiGetImageDetail, apiGetSingleImgUrl} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {LoadingState} from '../component/LoadingState';
 import {ThumbnailImage} from '../component/ThumbnailImage';
+import {ZoomImageModal} from '../component/ZoomImageModal';
 import {useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';
 import type {GalleryImage, ImageDetail, LinkValue} from '../tools/types';
@@ -255,10 +255,6 @@ export const ImageDetailPage = ({
       : detail.normalSrc
     : currentImage.album;
   const imageUri = absoluteImageUrl(imageSource, site);
-  const previewImages = useMemo(
-    () => (imageUri ? [{uri: imageUri}] : []),
-    [imageUri],
-  );
   const imageRatio = detail?.height && detail.width ? detail.height / detail.width : 1;
   const imageHeight = Math.max(220, Math.round((width - 16) * imageRatio));
   const pageStyle = {backgroundColor: colors.background};
@@ -376,13 +372,10 @@ export const ImageDetailPage = ({
           ) : null}
         </ScrollView>
       )}
-      <ImageViewing
-        images={previewImages}
-        imageIndex={0}
+      <ZoomImageModal
         visible={previewVisible}
+        uri={imageUri}
         onRequestClose={() => setPreviewVisible(false)}
-        swipeToCloseEnabled
-        doubleTapToZoomEnabled
       />
     </View>
   );
@@ -558,11 +551,13 @@ const ActionButton = ({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
-      style={[styles.actionButton, buttonColor]}>
+      style={[styles.actionButton, buttonColor]}
+    >
       <Text
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={[styles.actionText, textColor]}>
+        style={[styles.actionText, textColor]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -585,6 +580,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '800',
+    userSelect:'text'
   },
   filename: {
     marginTop: 4,

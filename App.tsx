@@ -8,6 +8,7 @@ import {
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {StatusBar, StyleSheet, View} from 'react-native';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {Provider as ReduxProvider} from 'react-redux';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {SideMenu} from './src/component/SideMenu';
@@ -40,11 +41,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function App() {
   return (
-    <SafeAreaProvider>
-      <ReduxProvider store={store}>
-        <AppShell />
-      </ReduxProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <SafeAreaProvider>
+        <ReduxProvider store={store}>
+          <AppShell />
+        </ReduxProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -197,6 +200,9 @@ function AppShell() {
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },

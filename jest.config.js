@@ -16,10 +16,11 @@ module.exports = {
   },
   setupFiles: ['./jest.setup.js'],
   testEnvironment: 'node',
+  resolver: 'react-native-worklets/jest/resolver.js',
   transform: {
     '^.+\\.[jt]sx?$': 'babel-jest',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native|@react-navigation|react-native-safe-area-context|react-native-screens|standard-navigation|use-latest-callback|nanoid)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native|@react-navigation|react-native-safe-area-context|react-native-screens|react-native-gesture-handler|react-native-reanimated|react-native-worklets|react-native-is-edge-to-edge|standard-navigation|use-latest-callback|nanoid)/)',
   ],
 };
