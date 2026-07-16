@@ -3,7 +3,6 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type ImageLoadEventData,
   type LayoutChangeEvent,
@@ -24,6 +23,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { IconHome } from '../assets/icon/Xcircle.tsx';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -738,7 +738,7 @@ export const ZoomImageModal = ({
             onPress={requestClose}
             style={[styles.closeButton, { top: Math.max(insets.top + 8, 16) }]}
           >
-            <Text style={styles.closeLabel}>X</Text>
+            <IconHome size={24} color="#fff"/>
           </Pressable>
         </View>
       </GestureHandlerRootView>
@@ -774,11 +774,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.48)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.65)',
-  },
-  closeLabel: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: '600',
-    lineHeight: 24,
-  },
+  }
 });
