@@ -77,6 +77,17 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // React Native's generated C++ object paths exceed MAX_PATH under this checkout.
+    // Keep only CMake intermediates at a short path; Gradle and Metro stay at the project path.
+    // 加的那个handler库路径长度超了 这个配置用来解决
+    if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        externalNativeBuild {
+            cmake {
+                buildStagingDirectory new File(rootDir.toPath().getRoot().toFile(), ".herpy-cxx")
+            }
+        }
+    }
+
     namespace "com.herpyviewer"
     defaultConfig {
         applicationId "com.herpyviewer"
