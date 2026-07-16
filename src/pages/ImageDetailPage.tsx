@@ -12,11 +12,13 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
+import {apiAddFav, parseFavoriteAction} from '../apis/fav';
 import {apiGetImageDetail, apiGetSingleImgUrl} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {LoadingState} from '../component/LoadingState';
 import {ThumbnailImage} from '../component/ThumbnailImage';
+import {toast} from '../component/Toast';
 import {ZoomImageModal} from '../component/ZoomImageModal';
 import {useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';
@@ -50,6 +52,7 @@ export const ImageDetailPage = ({
   const [displayRaw, setDisplayRaw] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [rawDownloading, setRawDownloading] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [loadFailMsg, setLoadFailMsg] = useState('');
 
@@ -189,6 +192,38 @@ export const ImageDetailPage = ({
     setDisplayRaw(true);
   };
 
+  const addFavorite = async () => {
+    const pid = extractImagePid(detail?.href ?? currentImage.href);
+    if (favLoading) {
+      return;
+    }
+    if (!pid) {
+      toast.error('图片 ID 获取失败');
+      return;
+    }
+
+    setFavLoading(true);
+    try {
+      const response = await apiAddFav(pid, site);
+      if (response.statusCode !== 200) {
+        throw new Error(`favorite request failed: ${response.statusCode}`);
+      }
+
+      const action = parseFavoriteAction(response.data);
+      if (action === 'added') {
+        toast.success('收藏成功');
+      } else if (action === 'removed') {
+        toast.info('已取消收藏');
+      } else {
+        toast.error('收藏操作失败，请稍后重试');
+      }
+    } catch {
+      toast.error('收藏操作失败，请稍后重试');
+    } finally {
+      setFavLoading(false);
+    }
+  };
+
   const metadata = detail ? buildMetadata(detail) : null;
 
   const downloadRawImage = async () => {
@@ -311,14 +346,20 @@ export const ImageDetailPage = ({
                 colors={colors}
                 onPress={() => switchImage('prev')}
               />
+            </View>
+            <View style={[styles.controlViewCenter]}>
               <ActionButton
                 label={rawDownloading ? '下载中' : '下载原图'}
                 colors={colors}
                 disabled={rawLoading || rawDownloading}
                 onPress={downloadRawImage}
               />
-            </View>
-            <View style={[styles.controlView]}>
+              <ActionButton
+                label={favLoading ? '处理中' : '收藏'}
+                colors={colors}
+                disabled={favLoading}
+                onPress={addFavorite}
+              />
               <ActionButton
                 label={
                   rawLoading ? '加载中' : displayRaw ? '已显示原图' : '查看原图'
@@ -328,6 +369,8 @@ export const ImageDetailPage = ({
                 disabled={rawLoading}
                 onPress={showRawImage}
               />
+            </View>
+            <View style={[styles.controlView]}>
               <ActionButton
                 label="下一张"
                 colors={colors}
@@ -379,6 +422,15 @@ export const ImageDetailPage = ({
       />
     </View>
   );
+};
+
+const extractImagePid = (href: string) => {
+  const pidFromQuery = href.match(/[?&]pid=(\d+)/i)?.[1];
+  if (pidFromQuery) {
+    return pidFromQuery;
+  }
+
+  return href.match(/\?\/(\d+)(?:\/|$)/)?.[1] ?? null;
 };
 
 const buildMetadata = (detail: ImageDetail) => {
@@ -580,7 +632,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '800',
-    userSelect:'text'
+    userSelect: 'text',
   },
   filename: {
     marginTop: 4,
@@ -598,9 +650,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  controlView:{
+  controlView: {
     flexDirection: 'row',
-    gap:6
+    gap: 6,
+  },
+  controlViewCenter: {
+    flexDirection: 'row',
+    gap: 6,
   },
   actionButton: {
     minWidth: 64,

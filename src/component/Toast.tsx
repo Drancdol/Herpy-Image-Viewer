@@ -165,7 +165,7 @@ export const ToastHost = ({colors}: ToastHostProps) => {
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    top: 72,
+    bottom: 72,
     left: 0,
     right: 0,
     zIndex: 10000,
