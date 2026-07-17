@@ -53,12 +53,15 @@ export const ImageDetailPage = ({
   const [previewVisible, setPreviewVisible] = useState(false);
   const [rawDownloading, setRawDownloading] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const [isFav, setIsFav] = useState(false);
   const [message, setMessage] = useState('');
   const [loadFailMsg, setLoadFailMsg] = useState('');
 
   const detailRef = useRef<ImageDetail | null>(null);
+  const currentImageRef = useRef(image);
 
   useEffect(() => {
+    currentImageRef.current = image;
     setCurrentImage(image);
   }, [image]);
 
@@ -104,7 +107,15 @@ export const ImageDetailPage = ({
 
         setDetail(parsed);
         detailRef.current = parsed;
-
+        //设置收藏状态
+        if (Array.isArray(parsed.info['Favorites:'])) {
+          let fav = parsed.info['Favorites:'][0];
+          if (fav.name === 'Add to Favorites') {
+            setIsFav(false);
+          } else if (fav.name === 'Remove from Favorites') {
+            setIsFav(true);
+          }
+        }
         if (settings.preLoadRawImg) {
           // RN Android does not have uniapp's plus.downloader. Prefetch keeps
           // the feature useful without creating a custom native download layer.
@@ -150,7 +161,9 @@ export const ImageDetailPage = ({
         setMessage('当前已经是此页最后一张');
         return;
       }
-      setCurrentImage(upNextCache[nextIndex]);
+      const nextImage = upNextCache[nextIndex];
+      currentImageRef.current = nextImage;
+      setCurrentImage(nextImage);
     },
     [currentIndex, upNextCache],
   );
@@ -193,7 +206,8 @@ export const ImageDetailPage = ({
   };
 
   const addFavorite = async () => {
-    const pid = extractImagePid(detail?.href ?? currentImage.href);
+    const favoriteHref = currentImage.href;
+    const pid = extractImagePid(favoriteHref);
     if (favLoading) {
       return;
     }
@@ -201,7 +215,6 @@ export const ImageDetailPage = ({
       toast.error('图片 ID 获取失败');
       return;
     }
-
     setFavLoading(true);
     try {
       const response = await apiAddFav(pid, site);
@@ -212,8 +225,14 @@ export const ImageDetailPage = ({
       const action = parseFavoriteAction(response.data);
       if (action === 'added') {
         toast.success('收藏成功');
+        if (currentImageRef.current.href === favoriteHref) {
+          setIsFav(true);
+        }
       } else if (action === 'removed') {
         toast.info('已取消收藏');
+        if (currentImageRef.current.href === favoriteHref) {
+          setIsFav(false);
+        }
       } else {
         toast.error('收藏操作失败，请稍后重试');
       }
@@ -355,8 +374,9 @@ export const ImageDetailPage = ({
                 onPress={downloadRawImage}
               />
               <ActionButton
-                label={favLoading ? '处理中' : '收藏'}
+                label={favLoading ? '请求中' : isFav ? '取消收藏' : '收藏'}
                 colors={colors}
+                accent={!isFav}
                 disabled={favLoading}
                 onPress={addFavorite}
               />
