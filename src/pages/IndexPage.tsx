@@ -6,13 +6,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import {getLoginOutHref} from '../apis/auth';
 import {apiClassificationSwitchPage, apiMainPage} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {GalleryPage} from './GalleryPage';
 import {LoadingState} from '../component/LoadingState';
 import {ThumbnailImage} from '../component/ThumbnailImage';
-import {appActions} from '../store';
+import {appActions, userActions} from '../store';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';
 import type {AlbumSummary, GalleryImage, MainCategory} from '../tools/types';
@@ -95,6 +96,7 @@ const MainPageContent = ({colors}: {colors: ThemeColors}) => {
       if (response.statusCode !== 200) {
         throw new Error(`main request failed: ${response.statusCode}`);
       }
+      dispatch(userActions.setLoginState(getLoginOutHref(response.data)));
       setCategories(parseMainPage(response.data));
     } catch(error: any) {
       setLoadFailMsg(error.message);
@@ -102,7 +104,7 @@ const MainPageContent = ({colors}: {colors: ThemeColors}) => {
     } finally {
       setLoading(false);
     }
-  }, [site]);
+  }, [dispatch, site]);
 
   useEffect(() => {
     loadMainPage();

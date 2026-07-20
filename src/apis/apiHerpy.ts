@@ -1,7 +1,7 @@
 export type {ApiResponse} from './request';
-export type {LoginResult} from './auth';
+export type {LoginResult, LogoutResult} from './auth';
 export type {FavoriteAction} from './fav';
-export {apiLogin} from './auth';
+export {apiLogin, apiLogout} from './auth';
 export {apiAddFav, parseFavoriteAction} from './fav';
 export {
   apiClassificationPage,

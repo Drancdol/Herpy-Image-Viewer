@@ -14,6 +14,7 @@ export type ApiResponse = {
 
 export type RequestOptions = AxiosRequestConfig & {
   site?: SiteConfig;
+  persistAuthorizationCookies?: boolean;
 };
 
 const DEFAULT_TIMEOUT = 30000;
@@ -87,21 +88,24 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-apiClient.interceptors.response.use(response => {
-  saveAuthorizationCookies(getSetCookieHeader(response.headers));
-  return response;
-});
-
 export const request = async (
   href: string,
   options: RequestOptions = {},
 ): Promise<ApiResponse> => {
-  const {site = HERPY_SITE, ...axiosOptions} = options;
+  const {
+    site = HERPY_SITE,
+    persistAuthorizationCookies = true,
+    ...axiosOptions
+  } = options;
   const response = await apiClient.request<string>({
     method: 'GET',
     ...axiosOptions,
     url: buildUrl(href, site),
   });
+
+  if (persistAuthorizationCookies) {
+    saveAuthorizationCookies(getSetCookieHeader(response.headers));
+  }
 
   return {
     statusCode: response.status,

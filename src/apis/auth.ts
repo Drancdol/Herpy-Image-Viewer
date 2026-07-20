@@ -21,6 +21,27 @@ const stripHtml = (html: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+export const getLoginOutHref = (html: string): string => {
+  const href = html.match(
+    /<a\b[^>]*\bhref\s*=\s*(["'])(\/?logout\.php\?[^"']*)\1[^>]*>\s*logout\s*\[[^\]]+\]\s*<\/a>/i,
+  )?.[2];
+
+  return href
+    ? href.replace(/&amp;/gi, '&').split(/&referer=/i)[0]
+    : '';
+};
+
+export const hasLoggedInAccount = (html: string): boolean =>
+  Boolean(getLoginOutHref(html));
+
+export const isLogoutSuccessful = (html: string): boolean => {
+  const messageHtml = html.match(
+    /<div\b(?=[^>]*\bid\s*=\s*["']cpgMessage["'])(?=[^>]*\bclass\s*=\s*["'][^"']*\bcpg_user_message\b[^"']*["'])(?=[^>]*\bclass\s*=\s*["'][^"']*\bcpg_message_info\b[^"']*["'])[^>]*>([\s\S]*?)<\/div>/i,
+  )?.[1] ?? '';
+
+  return /^Bye\s+bye\s+.+?\s+\.\.\.$/i.test(stripHtml(messageHtml));
+};
+
 const extractLoginMessage = (html: string) => {
   const wrapperMatch = html.match(
     /<div\b(?=[^>]*\bclass=["'][^"']*\bcpg_message_(?:success|validation|warning)\b[^"']*["'])[^>]*>([\s\S]*?)<\/div>/i,
@@ -81,5 +102,24 @@ export const apiLogin = async (
     message:
       loginMessage.message ||
       (success ? 'Login succeeded.' : 'Login failed. Try again.'),
+  };
+};
+
+export type LogoutResult = ApiResponse & {
+  success: boolean;
+};
+
+export const apiLogout = async (
+  loginOutHref: string,
+  site: SiteConfig = HERPY_SITE,
+): Promise<LogoutResult> => {
+  const response = await request(loginOutHref, {
+    site,
+    persistAuthorizationCookies: false,
+  });
+
+  return {
+    ...response,
+    success: response.statusCode === 200 && isLogoutSuccessful(response.data),
   };
 };

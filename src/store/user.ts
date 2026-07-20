@@ -1,20 +1,21 @@
 import {createSlice, type PayloadAction} from '@reduxjs/toolkit';
-import {hasAuthorizationCookies} from '../storage/authorization';
-
 type UserState = {
   loggedIn: boolean;
+  loginOutHref: string;
 };
 
 const initialState: UserState = {
-  loggedIn: hasAuthorizationCookies(),
+  loggedIn: false,
+  loginOutHref: '',
 };
 
 const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    setLoggedIn(state, action: PayloadAction<boolean>) {
-      state.loggedIn = action.payload;
+    setLoginState(state, action: PayloadAction<string>) {
+      state.loginOutHref = action.payload;
+      state.loggedIn = Boolean(action.payload);
     },
   },
 });

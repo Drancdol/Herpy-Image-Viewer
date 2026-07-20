@@ -20,11 +20,8 @@ import {LoginPage} from './src/pages/LoginPage';
 import {SearchPage} from './src/pages/SearchPage';
 import {SearchResultPage} from './src/pages/SearchResultPage';
 import {SettingPage} from './src/pages/SettingPage';
-import {
-  clearExpiredAuthorizationCookies,
-  hasAuthorizationCookies,
-} from './src/storage/authorization';
-import {appActions, store, userActions} from './src/store';
+import {clearExpiredAuthorizationCookies} from './src/storage/authorization';
+import {appActions, store} from './src/store';
 import {useAppDispatch, useAppSelector} from './src/store/hooks';
 import {getTheme} from './src/tools/theme';
 import type {GalleryImage, SearchConfig} from './src/tools/types';
@@ -62,12 +59,11 @@ function AppShell() {
 
   useEffect(() => {
     const expired = clearExpiredAuthorizationCookies();
-    dispatch(userActions.setLoggedIn(hasAuthorizationCookies()));
 
     if (expired) {
       toast.info('登录信息已过期');
     }
-  }, [dispatch]);
+  }, []);
 
   const navigationTheme = useMemo(() => {
     const baseTheme = theme === 'dark' ? DarkTheme : DefaultTheme;

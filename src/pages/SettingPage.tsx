@@ -1,5 +1,6 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {apiLogout} from '../apis/auth';
 import {AppHeader} from '../component/AppHeader';
 import {SwitchRow} from '../component/SwitchRow';
 import {toast} from '../component/Toast';
@@ -16,19 +17,44 @@ type SettingPageProps = {
 
 export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
   const dispatch = useAppDispatch();
+  const site = useAppSelector(state => state.app.site);
   const theme = useAppSelector(state => state.app.theme);
   const settings = useAppSelector(state => state.app.settings);
   const loggedIn = useAppSelector(state => state.user.loggedIn);
+  const loginOutHref = useAppSelector(state => state.user.loginOutHref);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleAuthPress = () => {
+  const handleAuthPress = async () => {
     if (!loggedIn) {
       onLogin();
       return;
     }
 
-    clearAuthorizationCookies();
-    dispatch(userActions.setLoggedIn(false));
-    toast.success('已退出登录');
+    if (loggingOut) {
+      return;
+    }
+
+    if (!loginOutHref) {
+      toast.error('退出链接已失效，请返回首页刷新后重试');
+      return;
+    }
+
+    setLoggingOut(true);
+    try {
+      const result = await apiLogout(loginOutHref, site);
+      if (!result.success) {
+        toast.error('退出登录失败，请稍后重试');
+        return;
+      }
+
+      clearAuthorizationCookies();
+      dispatch(userActions.setLoginState(''));
+      toast.success('已退出登录');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '退出登录请求失败');
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -37,12 +63,14 @@ export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable
           accessibilityRole="button"
+          disabled={loggingOut}
           onPress={handleAuthPress}
           style={({pressed}) => [
             styles.actionRow,
             {
               backgroundColor: pressed ? colors.primarySoft : colors.surface,
               borderColor: colors.border,
+              opacity: loggingOut ? 0.64 : 1,
             },
           ]}>
           <View style={styles.actionTextBox}>
@@ -52,7 +80,7 @@ export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
             <Text style={[styles.actionDescription, {color: colors.textMuted}]}>
               {loggedIn
                 ? '清除本地保存的登录 Cookie'
-                : '登录 Herpy 账号后请求会自动携带 Cookie'}
+                : '登录 Herpy 账号以获取 Cookie'}
             </Text>
           </View>
           <Text
@@ -60,7 +88,7 @@ export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
               styles.actionValue,
               {color: loggedIn ? colors.danger : colors.primary},
             ]}>
-            {loggedIn ? '退出' : '进入'}
+            {loggingOut ? '退出中' : loggedIn ? '退出' : '进入'}
           </Text>
         </Pressable>
         <SwitchRow

@@ -14,8 +14,7 @@ import {
 import {apiLogin} from '../apis/auth';
 import {AppHeader} from '../component/AppHeader';
 import {toast} from '../component/Toast';
-import {userActions} from '../store';
-import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';
 
 type LoginPageProps = {
@@ -25,7 +24,6 @@ type LoginPageProps = {
 };
 
 export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
-  const dispatch = useAppDispatch();
   const site = useAppSelector(state => state.app.site);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -56,7 +54,6 @@ export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
       }
 
       if (result.success) {
-        dispatch(userActions.setLoggedIn(true));
         setPassword('');
         onSuccess();
       }
