@@ -6,6 +6,7 @@ export {apiAddFav, parseFavoriteAction} from './fav';
 export {
   apiClassificationPage,
   apiClassificationSwitchPage,
+  apiFavoriteGalleryPage,
   apiGetImageDetail,
   apiGetSingleImgUrl,
   apiMainPage,

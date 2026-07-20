@@ -13,6 +13,7 @@ import {Provider as ReduxProvider} from 'react-redux';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {SideMenu} from './src/component/SideMenu';
 import {toast, ToastHost} from './src/component/Toast';
+import {FavoritesPage} from './src/pages/FavoritesPage';
 import {ImageDetailPage} from './src/pages/ImageDetailPage';
 import {IndexPage} from './src/pages/IndexPage';
 import {LoginPage} from './src/pages/LoginPage';
@@ -30,6 +31,7 @@ import type {GalleryImage, SearchConfig} from './src/tools/types';
 
 type RootStackParamList = {
   home: undefined;
+  favorites: undefined;
   login: undefined;
   settings: undefined;
   search: undefined;
@@ -127,6 +129,17 @@ function AppShell() {
                 />
               )}
             </Stack.Screen>
+            <Stack.Screen name="favorites">
+              {({navigation}) => (
+                <FavoritesPage
+                  colors={colors}
+                  onBack={() => navigation.goBack()}
+                  onOpenImage={image =>
+                    navigation.navigate('imageDetail', {image})
+                  }
+                />
+              )}
+            </Stack.Screen>
             <Stack.Screen name="settings">
               {({navigation}) => (
                 <SettingPage
@@ -192,6 +205,10 @@ function AppShell() {
         colors={colors}
         onClose={() => setMenuOpen(false)}
         onHome={goHome}
+        onFavorites={() => {
+          dispatch(appActions.selectAlbum(null));
+          navigationRef.navigate('favorites');
+        }}
         onSettings={() => navigationRef.navigate('settings')}
       />
       <ToastHost colors={colors} />

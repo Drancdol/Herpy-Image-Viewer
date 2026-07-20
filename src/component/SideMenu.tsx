@@ -18,6 +18,7 @@ type SideMenuProps = {
   colors: ThemeColors;
   onClose: () => void;
   onHome: () => void;
+  onFavorites: () => void;
   onSettings: () => void;
 };
 
@@ -26,6 +27,7 @@ export const SideMenu = ({
   colors,
   onClose,
   onHome,
+  onFavorites,
   onSettings,
 }: SideMenuProps) => {
   const {width} = useWindowDimensions();
@@ -122,6 +124,15 @@ export const SideMenu = ({
           colors={colors}
           onPress={() => {
             onHome();
+            onClose();
+          }}
+        />
+        <MenuItem
+          label="收藏"
+          symbol="☆"
+          colors={colors}
+          onPress={() => {
+            onFavorites();
             onClose();
           }}
         />

@@ -2,6 +2,7 @@ export type ThemeName = 'light' | 'dark';
 
 export type RouteName =
   | 'home'
+  | 'favorites'
   | 'login'
   | 'settings'
   | 'imageDetail'
@@ -10,6 +11,7 @@ export type RouteName =
 
 export type AppRoute =
   | {name: 'home'}
+  | {name: 'favorites'}
   | {name: 'login'}
   | {name: 'settings'}
   | {name: 'search'}

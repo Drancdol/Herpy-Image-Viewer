@@ -27,6 +27,12 @@ export const apiClassificationSwitchPage = (
 ) =>
   request(appendPage(normalizePath(href, site), Math.max(1, page)), {site});
 
+export const apiFavoriteGalleryPage = (
+  page = 1,
+  site: SiteConfig = HERPY_SITE,
+) =>
+  apiClassificationSwitchPage('thumbnails.php?album=favpics', page, site);
+
 export const apiGetImageDetail = (
   href: string,
   site: SiteConfig = HERPY_SITE,
