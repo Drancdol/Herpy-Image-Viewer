@@ -21,7 +21,6 @@ export const FavoritesPage = ({
   const site = useAppSelector(state => state.app.site);
   const loadHtml = useCallback(
     async (page: number) => {
-      debugger
       const response = await apiFavoriteGalleryPage(page, site);
       if (response.statusCode !== 200) {
         throw new Error(`favorites request failed: ${response.statusCode}`);
