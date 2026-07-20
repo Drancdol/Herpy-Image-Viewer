@@ -58,11 +58,7 @@ function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const expired = clearExpiredAuthorizationCookies();
-
-    if (expired) {
-      toast.info('登录信息已过期');
-    }
+    clearExpiredAuthorizationCookies();
   }, []);
 
   const navigationTheme = useMemo(() => {
