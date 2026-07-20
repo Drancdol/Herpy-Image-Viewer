@@ -23,7 +23,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconHome } from '../assets/icon/Xcircle.tsx';
+import { IconXCircle } from '../assets/icon/Xcircle.tsx';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -738,7 +738,7 @@ export const ZoomImageModal = ({
             onPress={requestClose}
             style={[styles.closeButton, { top: Math.max(insets.top + 8, 16) }]}
           >
-            <IconHome size={24} color="#fff"/>
+            <IconXCircle size={24} color="#fff" />
           </Pressable>
         </View>
       </GestureHandlerRootView>

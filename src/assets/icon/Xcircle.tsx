@@ -1,6 +1,6 @@
 import Svg, { Path } from 'react-native-svg';
 
-export const IconHome = ({ size = 24, color = '#333' }) => (
+export const IconXCircle = ({ size = 24, color = '#333' }) => (
   <Svg
     width={size}
     height={size}

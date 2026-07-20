@@ -8,6 +8,9 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import {IconHome} from '../assets/icon/Home';
+import {IconSetting} from '../assets/icon/Setting';
+import {IconStar} from '../assets/icon/Star';
 import type {ThemeColors} from '../tools/theme';
 
 const avatar = require('../assets/img/icon.png');
@@ -111,16 +114,16 @@ export const SideMenu = ({
         <View style={[styles.profile, {backgroundColor: colors.primarySoft}]}>
           <Image source={avatar} style={styles.avatar} />
           <View style={styles.profileText}>
-            <Text style={[styles.nickname, {color: colors.text}]}>游客</Text>
+            <Text style={[styles.nickname, {color: colors.text}]}>Welcome</Text>
             <Text style={[styles.siteName, {color: colors.textMuted}]}>
-              Herpy Image Archive
+              HerpyImageViewer
             </Text>
           </View>
         </View>
 
         <MenuItem
           label="首页"
-          symbol="⌂"
+          Icon={IconHome}
           colors={colors}
           onPress={() => {
             onHome();
@@ -129,7 +132,7 @@ export const SideMenu = ({
         />
         <MenuItem
           label="收藏"
-          symbol="☆"
+          Icon={IconStar}
           colors={colors}
           onPress={() => {
             onFavorites();
@@ -138,7 +141,7 @@ export const SideMenu = ({
         />
         <MenuItem
           label="设置"
-          symbol="⚙"
+          Icon={IconSetting}
           colors={colors}
           onPress={() => {
             onSettings();
@@ -152,12 +155,12 @@ export const SideMenu = ({
 
 type MenuItemProps = {
   label: string;
-  symbol: string;
+  Icon: React.ComponentType<{size?: number; color?: string}>;
   colors: ThemeColors;
   onPress: () => void;
 };
 
-const MenuItem = ({label, symbol, colors, onPress}: MenuItemProps) => (
+const MenuItem = ({label, Icon, colors, onPress}: MenuItemProps) => (
   <Pressable
     accessibilityRole="button"
     onPress={onPress}
@@ -165,7 +168,9 @@ const MenuItem = ({label, symbol, colors, onPress}: MenuItemProps) => (
       styles.menuItem,
       {backgroundColor: pressed ? colors.primarySoft : colors.surface},
     ]}>
-    <Text style={[styles.menuSymbol, {color: colors.primary}]}>{symbol}</Text>
+    <View style={styles.menuIcon}>
+      <Icon size={25} color={colors.primary} />
+    </View>
     <Text style={[styles.menuLabel, {color: colors.text}]}>{label}</Text>
   </Pressable>
 );
@@ -219,10 +224,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  menuSymbol: {
+  menuIcon: {
     width: 34,
-    fontSize: 22,
-    fontWeight: '700',
+    alignItems: 'flex-start',
   },
   menuLabel: {
     fontSize: 16,
