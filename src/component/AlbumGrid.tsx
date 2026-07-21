@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, { useMemo } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,10 +6,12 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
-import {ThumbnailImage} from './ThumbnailImage';
-import type {ThemeColors} from '../tools/theme';
-import type {GalleryImage} from '../tools/types';
+import { ThumbnailImage } from './ThumbnailImage';
+import type { ThemeColors } from '../tools/theme';
+import type { GalleryImage } from '../tools/types';
 
 type AlbumGridProps = {
   list: GalleryImage[];
@@ -18,18 +20,28 @@ type AlbumGridProps = {
   onOpen: (item: GalleryImage) => void;
 };
 
+const MASONRY_GAP = 8;
+const CARD_TITLE_HEIGHT = 42;
+const CARD_BORDER_HEIGHT = StyleSheet.hairlineWidth * 2;
+
 export const AlbumGrid = ({
   list,
   comicMode,
   colors,
   onOpen,
 }: AlbumGridProps) => {
-  const {width} = useWindowDimensions();
-  const columnCount = width >= 720 ? 3 : 2;
-  const cardWidth = Math.floor((width - 28 - (columnCount - 1) * 8) / columnCount);
+  const { width } = useWindowDimensions();
+  const columnCount = width >= 360 ? 3 : 2;
+  const cardWidth = Math.floor(
+    (width - 28 - (columnCount - 1) * 8) / columnCount,
+  );
 
-  const columns = useMemo(
-    () => buildColumns(list, columnCount, cardWidth),
+  const masonryLayout = useMemo(
+    () => {
+      let data = buildMasonryLayout(list, columnCount, cardWidth);
+      console.log(data)
+      return data;
+    },
     [cardWidth, columnCount, list],
   );
 
@@ -38,7 +50,8 @@ export const AlbumGrid = ({
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.comicContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         {list.map(item => (
           <ImageCard
             key={item.href}
@@ -57,47 +70,87 @@ export const AlbumGrid = ({
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.masonryContent}
-      showsVerticalScrollIndicator={false}>
-      {columns.map((column, index) => (
-        <View key={`column-${index}`} style={[styles.column, {width: cardWidth}]}>
-          {column.map(item => (
-            <ImageCard
-              key={item.href}
-              item={item}
-              width={cardWidth}
-              colors={colors}
-              onOpen={onOpen}
-            />
-          ))}
-        </View>
-      ))}
+      showsVerticalScrollIndicator={false}
+    >
+      <View
+        style={[
+          styles.masonryGrid,
+          { height: masonryLayout.height, width: masonryLayout.width },
+        ]}
+      >
+        {masonryLayout.items.map(({ item, left, top }) => (
+          <ImageCard
+            key={item.href}
+            item={item}
+            width={cardWidth}
+            colors={colors}
+            onOpen={onOpen}
+            containerStyle={[styles.positionedCard, { left, top }]}
+          />
+        ))}
+      </View>
     </ScrollView>
   );
 };
 
-const buildColumns = (
+type MasonryItem = {
+  item: GalleryImage;
+  order: number;
+  left: number;
+  top: number;
+};
+
+type MasonryLayout = {
+  items: MasonryItem[];
+  width: number;
+  height: number;
+};
+
+const buildMasonryLayout = (
   list: GalleryImage[],
   columnCount: number,
   cardWidth: number,
-) => {
-  const columns = Array.from({length: columnCount}, () => ({
+): MasonryLayout => {
+  const columns = Array.from({ length: columnCount }, () => ({
     height: 0,
-    items: [] as GalleryImage[],
   }));
 
-  // Keep the waterfall close to the source ordering while avoiding one very
-  // tall column when the original gallery mixes portrait and landscape art.
-  list.forEach(item => {
-    const target = columns.reduce((shortest, current) =>
-      current.height < shortest.height ? current : shortest,
+  const items = list.map((item, order) => {
+    const columnIndex = columns.reduce(
+      (shortestIndex, current, index) =>
+        current.height < columns[shortestIndex].height ? index : shortestIndex,
+      0,
     );
-    const imageHeight = Math.max(90, cardWidth * (item.height / item.width));
-    target.height += imageHeight + 58;
-    target.items.push(item);
+
+    const target = columns[columnIndex];
+    const top = target.height;
+    target.height +=
+      getImageHeight(item, cardWidth) +
+      CARD_TITLE_HEIGHT +
+      CARD_BORDER_HEIGHT +
+      MASONRY_GAP;
+
+    return {
+      item,
+      order,
+      left: columnIndex * (cardWidth + MASONRY_GAP),
+      top,
+    };
   });
 
-  return columns.map(column => column.items);
+  return {
+    // The source-order tag makes thumbnails mount and start loading in source
+    // order even though their visual positions are distributed by column.
+    items: items.sort((first, second) => first.order - second.order),
+    width: columnCount * cardWidth + (columnCount - 1) * MASONRY_GAP,
+    height:
+      Math.max(0, ...columns.map(column => column.height)) -
+      (items.length > 0 ? MASONRY_GAP : 0),
+  };
 };
+
+const getImageHeight = (item: GalleryImage, width: number) =>
+  Math.max(92, width * (item.height / item.width));
 
 type ImageCardProps = {
   item: GalleryImage;
@@ -105,25 +158,35 @@ type ImageCardProps = {
   fixedHeight?: number;
   colors: ThemeColors;
   onOpen: (item: GalleryImage) => void;
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
-const ImageCard = ({item, width, fixedHeight, colors, onOpen}: ImageCardProps) => {
-  const imageHeight = fixedHeight ?? Math.max(92, width * (item.height / item.width));
-  const imageSizeStyle = {height: imageHeight};
+const ImageCard = ({
+  item,
+  width,
+  fixedHeight,
+  colors,
+  onOpen,
+  containerStyle,
+}: ImageCardProps) => {
+  const imageHeight = fixedHeight ?? getImageHeight(item, width);
+  const imageSizeStyle = { height: imageHeight };
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() => onOpen(item)}
-      style={({pressed}) => [
+      style={({ pressed }) => [
         styles.card,
+        containerStyle,
         {
           width,
           backgroundColor: colors.surface,
           borderColor: colors.border,
           opacity: pressed ? 0.82 : 1,
         },
-      ]}>
+      ]}
+    >
       <ThumbnailImage
         src={item.album}
         colors={colors}
@@ -132,7 +195,8 @@ const ImageCard = ({item, width, fixedHeight, colors, onOpen}: ImageCardProps) =
       />
       <Text
         numberOfLines={2}
-        style={[styles.cardTitle, {color: colors.text}]}>
+        style={[styles.cardTitle, { color: colors.text }]}
+      >
         {item.name || '未命名'}
       </Text>
     </Pressable>
@@ -147,9 +211,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 10,
     paddingBottom: 12,
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'flex-start',
+  },
+  masonryGrid: {
+    position: 'relative',
   },
   comicContent: {
     paddingHorizontal: 10,
@@ -157,10 +221,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: MASONRY_GAP,
   },
-  column: {
-    gap: 8,
+  positionedCard: {
+    position: 'absolute',
   },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
