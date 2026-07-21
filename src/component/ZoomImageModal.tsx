@@ -567,7 +567,6 @@ export const ZoomImageModal = ({
     .onTouchesUp((event, stateManager) => {
       ('worklet');
       console.log('点击完毕');
-      const touches = event.allTouches;
       const doubleTapAnchorX = firstTapX.value;
       const doubleTapAnchorY = firstTapY.value;
 
@@ -578,8 +577,13 @@ export const ZoomImageModal = ({
         firstTapTime.value = -1;
         isSecondTap.value = false;
       }
-      if (touches.length > 0) {
-        const remainingTouch = touches[0];
+      if (event.numberOfTouches > 0) {
+        const remainingTouch = event.allTouches.find(
+          touch =>
+            !event.changedTouches.some(
+              changedTouch => changedTouch.id === touch.id,
+            ),
+        );
         if (remainingTouch && interactionMode.value === MODE_PINCH) {
           interactionMode.value = MODE_PAN;
           panStartX.value = remainingTouch.x;
