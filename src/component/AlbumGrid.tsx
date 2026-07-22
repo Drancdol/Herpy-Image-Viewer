@@ -31,7 +31,7 @@ export const AlbumGrid = ({
   onOpen,
 }: AlbumGridProps) => {
   const { width } = useWindowDimensions();
-  const columnCount = width >= 360 ? 3 : 2;
+  const columnCount = width < 360 ? 2 : (width < 720 ? 3 : 4);
   const cardWidth = Math.floor(
     (width - 28 - (columnCount - 1) * 8) / columnCount,
   );
