@@ -1,4 +1,5 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {StyleSheet, Text, View} from 'react-native';
 import {AlbumGrid} from '../component/AlbumGrid';
 import {EmptyState} from '../component/EmptyState';
@@ -6,6 +7,7 @@ import {LoadingState} from '../component/LoadingState';
 import {Pagination} from '../component/Pagination';
 import {appActions} from '../store';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {galleryQueryKey} from '../query/keys';
 import type {ThemeColors} from '../tools/theme';
 import type {GalleryImage, PaginationInfo} from '../tools/types';
 import {parseGalleryImages, parsePagination} from '../tools/process';
@@ -14,7 +16,7 @@ type GalleryPageProps = {
   colors: ThemeColors;
   title?: string;
   requestKey: string;
-  loadHtml: (page: number) => Promise<string>;
+  loadHtml: (page: number, signal?: AbortSignal) => Promise<string>;
   onOpenImage: (item: GalleryImage) => void;
   onBackToMain?: () => void;
 };
@@ -28,63 +30,75 @@ export const GalleryPage = ({
   onBackToMain,
 }: GalleryPageProps) => {
   const dispatch = useAppDispatch();
+  const site = useAppSelector(state => state.app.site);
   const settings = useAppSelector(state => state.app.settings);
-  const [images, setImages] = useState<GalleryImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadFail, setLoadFail] = useState(false);
-  const [pagination, setPagination] = useState<PaginationInfo>({
+  const [page, setPage] = useState(1);
+  const defaultPagination: PaginationInfo = {
     currentIndex: 1,
     totalPages: 1,
     totalNumber: 0,
-  });
+  };
+  const {data, isError, isPending, refetch} = useQuery({
+    queryKey: galleryQueryKey(site.baseUrl, requestKey, page),
+    queryFn: async ({signal}) => {
+      const html = await loadHtml(page, signal);
+      const nextPagination = parsePagination(html, page);
 
-  const loadPage = useCallback(
-    async (page: number) => {
-      setLoading(true);
-      setLoadFail(false);
-      try {
-        const html = await loadHtml(page);
-        const nextImages = parseGalleryImages(html);
-        const nextPagination = parsePagination(html, page);
-
-        setImages(nextImages);
-        dispatch(appActions.setUpNextCache(nextImages));
-        setPagination({
+      return {
+        images: parseGalleryImages(html),
+        pagination: {
           currentIndex: page,
           totalPages: Math.max(nextPagination.totalPages, 1),
           totalNumber: nextPagination.totalNumber,
-        });
-      } catch {
-        setLoadFail(true);
-      } finally {
-        setLoading(false);
-      }
+        },
+      };
     },
-    [dispatch, loadHtml],
-  );
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000
+  });
 
   useEffect(() => {
-    loadPage(1);
-  }, [loadPage, requestKey]);
+    setPage(1);
+  }, [requestKey]);
 
-  if (loading) {
+  useEffect(() => {
+    if (data) {
+      dispatch(appActions.setUpNextCache(data.images));
+    }
+  }, [data, dispatch]);
+
+  const images = data?.images ?? [];
+  const pagination = data?.pagination ?? defaultPagination;
+
+  if (isPending) {
     return <LoadingState colors={colors} text="正在加载图集" />;
   }
 
-  if (loadFail) {
+  if (isError && !data) {
     return (
       <EmptyState
         title="网络超时，加载失败"
         actionText="重试"
         colors={colors}
-        onAction={() => loadPage(pagination.currentIndex)}
+        onAction={() => refetch()}
       />
     );
   }
 
   if (images.length === 0) {
     return (
-      <EmptyState title="暂无图片" actionText="刷新" colors={colors} onAction={() => loadPage(1)} />
+      <EmptyState
+        title="暂无图片"
+        actionText="刷新"
+        colors={colors}
+        onAction={() => {
+          if (page === 1) {
+            refetch();
+          } else {
+            setPage(1);
+          }
+        }}
+      />
     );
   }
 
@@ -118,9 +132,9 @@ export const GalleryPage = ({
         pages={pagination.totalPages}
         total={pagination.totalNumber}
         colors={colors}
-        onChange={page => {
-          if (page !== pagination.currentIndex) {
-            loadPage(page);
+        onChange={nextPage => {
+          if (nextPage !== pagination.currentIndex) {
+            setPage(nextPage);
           }
         }}
       />

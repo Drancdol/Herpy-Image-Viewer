@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,10 +12,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {apiLogin} from '../apis/auth';
+import {apiLogin, getLoginOutHref} from '../apis/auth';
 import {AppHeader} from '../component/AppHeader';
 import {toast} from '../component/Toast';
-import {useAppSelector} from '../store/hooks';
+import {userActions} from '../store';
+import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {clearSiteQueryCache} from '../query/cache';
 import type {ThemeColors} from '../tools/theme';
 
 type LoginPageProps = {
@@ -24,10 +27,18 @@ type LoginPageProps = {
 };
 
 export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const site = useAppSelector(state => state.app.site);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const loginMutation = useMutation({
+    mutationFn: ({username: loginUsername, password: loginPassword}: {
+      username: string;
+      password: string;
+    }) => apiLogin(loginUsername, loginPassword, site, `${site.baseUrl}/`),
+  });
+  const submitting = loginMutation.isPending;
 
   const canSubmit = Boolean(username.trim() && password && !submitting);
 
@@ -38,14 +49,11 @@ export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
       return;
     }
 
-    setSubmitting(true);
     try {
-      const result = await apiLogin(
-        normalizedUsername,
+      const result = await loginMutation.mutateAsync({
+        username: normalizedUsername,
         password,
-        site,
-        `${site.baseUrl}/`,
-      );
+      });
 
       if (result.success) {
         toast.success(result.message);
@@ -54,13 +62,13 @@ export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
       }
 
       if (result.success) {
+        await clearSiteQueryCache(queryClient, site.baseUrl);
+        dispatch(userActions.setLoginState(getLoginOutHref(result.data)));
         setPassword('');
         onSuccess();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '登录请求失败');
-    } finally {
-      setSubmitting(false);
     }
   };
 

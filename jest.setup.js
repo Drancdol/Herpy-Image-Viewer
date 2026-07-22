@@ -58,6 +58,7 @@ jest.mock('react-native', () => ({
     isRTL: false,
   },
   Image: mockImage,
+  KeyboardAvoidingView: mockComponent('KeyboardAvoidingView'),
   Linking: {
     addEventListener: jest.fn(() => ({remove: jest.fn()})),
     getInitialURL: jest.fn(() => Promise.resolve(null)),
@@ -77,6 +78,7 @@ jest.mock('react-native', () => ({
     select: jest.fn(options => options.ios ?? options.default),
   },
   Pressable: mockComponent('Pressable'),
+  RefreshControl: mockComponent('RefreshControl'),
   ScrollView: mockComponent('ScrollView'),
   StatusBar: mockStatusBar,
   StyleSheet: {
@@ -109,6 +111,12 @@ jest.mock('react-native', () => ({
     value: initialValue,
   })),
   useWindowDimensions: jest.fn(() => ({width: 390, height: 844})),
+}));
+
+jest.mock('react-native-svg', () => ({
+  __esModule: true,
+  default: mockComponent('Svg'),
+  Path: mockComponent('Path'),
 }));
 
 jest.mock('react-native-reanimated', () => {

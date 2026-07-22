@@ -1,4 +1,5 @@
-import React, {useState} from 'react';
+import React from 'react';
+import {useMutation, useQueryClient} from '@tanstack/react-query';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {apiLogout} from '../apis/auth';
 import {AppHeader} from '../component/AppHeader';
@@ -7,6 +8,7 @@ import {toast} from '../component/Toast';
 import {clearAuthorizationCookies} from '../storage/authorization';
 import {appActions, userActions} from '../store';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {clearSiteQueryCache} from '../query/cache';
 import type {ThemeColors} from '../tools/theme';
 
 type SettingPageProps = {
@@ -17,12 +19,16 @@ type SettingPageProps = {
 
 export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const site = useAppSelector(state => state.app.site);
   const theme = useAppSelector(state => state.app.theme);
   const settings = useAppSelector(state => state.app.settings);
   const loggedIn = useAppSelector(state => state.user.loggedIn);
   const loginOutHref = useAppSelector(state => state.user.loginOutHref);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const logoutMutation = useMutation({
+    mutationFn: (href: string) => apiLogout(href, site),
+  });
+  const loggingOut = logoutMutation.isPending;
 
   const handleAuthPress = async () => {
     if (!loggedIn) {
@@ -39,21 +45,19 @@ export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
       return;
     }
 
-    setLoggingOut(true);
     try {
-      const result = await apiLogout(loginOutHref, site);
+      const result = await logoutMutation.mutateAsync(loginOutHref);
       if (!result.success) {
         toast.error('退出登录失败，请稍后重试');
         return;
       }
 
       clearAuthorizationCookies();
+      await clearSiteQueryCache(queryClient, site.baseUrl);
       dispatch(userActions.setLoginState(''));
       toast.success('已退出登录');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '退出登录请求失败');
-    } finally {
-      setLoggingOut(false);
     }
   };
 

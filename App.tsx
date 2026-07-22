@@ -7,12 +7,13 @@ import {
   useNavigationContainerRef,
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {QueryClientProvider} from '@tanstack/react-query';
 import {StatusBar, StyleSheet, View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {Provider as ReduxProvider} from 'react-redux';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {SideMenu} from './src/component/SideMenu';
-import {toast, ToastHost} from './src/component/Toast';
+import {ToastHost} from './src/component/Toast';
 import {FavoritesPage} from './src/pages/FavoritesPage';
 import {ImageDetailPage} from './src/pages/ImageDetailPage';
 import {IndexPage} from './src/pages/IndexPage';
@@ -21,6 +22,7 @@ import {SearchPage} from './src/pages/SearchPage';
 import {SearchResultPage} from './src/pages/SearchResultPage';
 import {SettingPage} from './src/pages/SettingPage';
 import {clearExpiredAuthorizationCookies} from './src/storage/authorization';
+import {queryClient} from './src/query/client';
 import {appActions, store} from './src/store';
 import {useAppDispatch, useAppSelector} from './src/store/hooks';
 import {getTheme} from './src/tools/theme';
@@ -43,7 +45,9 @@ function App() {
     <GestureHandlerRootView style={styles.gestureRoot}>
       <SafeAreaProvider>
         <ReduxProvider store={store}>
-          <AppShell />
+          <QueryClientProvider client={queryClient}>
+            <AppShell />
+          </QueryClientProvider>
         </ReduxProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

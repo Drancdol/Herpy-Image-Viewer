@@ -1,13 +1,15 @@
 import {HERPY_SITE} from '../tools/static';
 import type {SiteConfig} from '../tools/types';
 import {request} from './request';
+import type {RequestSignal} from './request';
 
 export type FavoriteAction = 'added' | 'removed' | null;
 
 export const apiAddFav = (
   pid: number | string,
   site: SiteConfig = HERPY_SITE,
-) => request(`addfav.php?pid=${encodeURIComponent(String(pid))}`, {site});
+  options?: {signal?: RequestSignal},
+) => request(`addfav.php?pid=${encodeURIComponent(String(pid))}`, {site, ...options});
 
 export const parseFavoriteAction = (html: string): FavoriteAction => {
   const messageHtml = html.match(

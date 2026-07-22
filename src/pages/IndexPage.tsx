@@ -1,13 +1,14 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect} from 'react';
+import {useQuery} from '@tanstack/react-query';
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import {getLoginOutHref} from '../apis/auth';
-import {apiClassificationSwitchPage, apiMainPage} from '../apis/gallery';
+import {apiClassificationSwitchPage} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {GalleryPage} from './GalleryPage';
@@ -15,9 +16,10 @@ import {LoadingState} from '../component/LoadingState';
 import {ThumbnailImage} from '../component/ThumbnailImage';
 import {appActions, userActions} from '../store';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
+import {fetchMainPage} from '../query/fetchers';
+import {mainPageQueryKey} from '../query/keys';
 import type {ThemeColors} from '../tools/theme';
-import type {AlbumSummary, GalleryImage, MainCategory} from '../tools/types';
-import {parseMainPage} from '../tools/process';
+import type {AlbumSummary, GalleryImage} from '../tools/types';
 
 type IndexPageProps = {
   colors: ThemeColors;
@@ -39,7 +41,7 @@ export const IndexPage = ({
   );
 
   const loadAlbumHtml = useCallback(
-    async (page: number) => {
+    async (page: number, signal?: AbortSignal) => {
       if (!selectedAlbumHref) {
         return '';
       }
@@ -47,6 +49,7 @@ export const IndexPage = ({
         selectedAlbumHref,
         page,
         site,
+        {signal},
       );
       if (response.statusCode !== 200) {
         throw new Error(`album request failed: ${response.statusCode}`);
@@ -83,44 +86,33 @@ export const IndexPage = ({
 const MainPageContent = ({colors}: {colors: ThemeColors}) => {
   const dispatch = useAppDispatch();
   const site = useAppSelector(state => state.app.site);
-  const [categories, setCategories] = useState<MainCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadFail, setLoadFail] = useState(false);
-  const [loadFailMsg, setLoadFailMsg] = useState('');
-
-  const loadMainPage = useCallback(async () => {
-    setLoading(true);
-    setLoadFail(false);
-    try {
-      const response = await apiMainPage(site);
-      if (response.statusCode !== 200) {
-        throw new Error(`main request failed: ${response.statusCode}`);
-      }
-      dispatch(userActions.setLoginState(getLoginOutHref(response.data)));
-      setCategories(parseMainPage(response.data));
-    } catch(error: any) {
-      setLoadFailMsg(error.message);
-      setLoadFail(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch, site]);
+  const {data, error, isError, isFetching, isPending, refetch} = useQuery({
+    queryKey: mainPageQueryKey(site.baseUrl),
+    queryFn: ({signal}) => fetchMainPage(site, signal),
+    staleTime: Infinity,
+    gcTime: Infinity
+  });
 
   useEffect(() => {
-    loadMainPage();
-  }, [loadMainPage]);
+    if (data) {
+      dispatch(userActions.setLoginState(data.loginOutHref));
+    }
+  }, [data, dispatch]);
 
-  if (loading) {
+  const categories = data?.categories ?? [];
+  const loadFailMsg = error instanceof Error ? error.message : '';
+
+  if (isPending) {
     return <LoadingState colors={colors} text="正在加载分类" />;
   }
 
-  if (loadFail) {
+  if (isError && !data) {
     return (
       <EmptyState
         title={'主页加载失败'+loadFailMsg}
         actionText="重试"
         colors={colors}
-        onAction={loadMainPage}
+        onAction={() => refetch()}
       />
     );
   }
@@ -131,7 +123,7 @@ const MainPageContent = ({colors}: {colors: ThemeColors}) => {
         title="没有解析到分类"
         actionText="刷新"
         colors={colors}
-        onAction={loadMainPage}
+        onAction={() => refetch()}
       />
     );
   }
@@ -140,6 +132,14 @@ const MainPageContent = ({colors}: {colors: ThemeColors}) => {
     <ScrollView
       style={styles.mainScroll}
       contentContainerStyle={styles.mainContent}
+      refreshControl={
+        <RefreshControl
+          colors={[colors.primary]}
+          onRefresh={() => refetch()}
+          refreshing={isFetching && !isPending}
+          tintColor={colors.primary}
+        />
+      }
       showsVerticalScrollIndicator={false}>
       {categories.map(category => (
         <View

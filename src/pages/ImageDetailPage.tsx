@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   Image,
   PanResponder,
@@ -13,7 +14,6 @@ import {
 } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import {apiAddFav, parseFavoriteAction} from '../apis/fav';
-import {apiGetImageDetail, apiGetSingleImgUrl} from '../apis/gallery';
 import {AppHeader} from '../component/AppHeader';
 import {EmptyState} from '../component/EmptyState';
 import {LoadingState} from '../component/LoadingState';
@@ -21,12 +21,16 @@ import {ThumbnailImage} from '../component/ThumbnailImage';
 import {toast} from '../component/Toast';
 import {ZoomImageModal} from '../component/ZoomImageModal';
 import {useAppSelector} from '../store/hooks';
+import {fetchImageDetail, fetchRawImageSrc} from '../query/fetchers';
+import {
+  galleryQueryPrefix,
+  imageDetailQueryKey,
+  rawImageQueryKey,
+} from '../query/keys';
 import type {ThemeColors} from '../tools/theme';
 import type {GalleryImage, ImageDetail, LinkValue} from '../tools/types';
 import {
   absoluteImageUrl,
-  parseImageDetail,
-  parseRawImageSrc,
 } from '../tools/process';
 
 type ImageDetailPageProps = {
@@ -43,27 +47,46 @@ export const ImageDetailPage = ({
   const site = useAppSelector(state => state.app.site);
   const settings = useAppSelector(state => state.app.settings);
   const upNextCache = useAppSelector(state => state.app.upNextCache);
+  const queryClient = useQueryClient();
   const {width} = useWindowDimensions();
   const [currentImage, setCurrentImage] = useState(image);
-  const [detail, setDetail] = useState<ImageDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadFail, setLoadFail] = useState(false);
   const [rawLoading, setRawLoading] = useState(false);
+  const [rawSrc, setRawSrc] = useState('');
   const [displayRaw, setDisplayRaw] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [rawDownloading, setRawDownloading] = useState(false);
-  const [favLoading, setFavLoading] = useState(false);
   const [isFav, setIsFav] = useState(false);
   const [message, setMessage] = useState('');
-  const [loadFailMsg, setLoadFailMsg] = useState('');
-
-  const detailRef = useRef<ImageDetail | null>(null);
   const currentImageRef = useRef(image);
+  const detailQuery = useQuery({
+    queryKey: imageDetailQueryKey(site.baseUrl, currentImage.href),
+    queryFn: ({ signal }) => fetchImageDetail(currentImage.href, site, signal),
+    staleTime: 60 * 1000,
+    gcTime: 3 * 60 * 1000,
+  });
+  const favoriteMutation = useMutation({
+    mutationFn: (pid: number | string) => apiAddFav(pid, site),
+  });
+  const detail = detailQuery.data;
+  const loading = detailQuery.isPending;
+  const loadFailMsg =
+    detailQuery.error instanceof Error ? detailQuery.error.message : '';
+  const favLoading = favoriteMutation.isPending;
 
   useEffect(() => {
     currentImageRef.current = image;
     setCurrentImage(image);
   }, [image]);
+
+  useEffect(() => {
+    setDisplayRaw(false);
+    setRawSrc('');
+    setMessage('');
+  }, [currentImage.href]);
+
+  useEffect(() => {
+    setIsFav(getFavoriteState(detail));
+  }, [detail]);
 
   const resolveRawImage = useCallback(
     async (target: ImageDetail) => {
@@ -74,71 +97,40 @@ export const ImageDetailPage = ({
         return '';
       }
 
+      const fullHref = target.fullHref;
       setRawLoading(true);
       try {
-        const response = await apiGetSingleImgUrl(target.fullHref, site);
-        if (response.statusCode !== 200) {
-          return '';
-        }
-        return parseRawImageSrc(response.data);
+        return await queryClient.fetchQuery({
+          queryKey: rawImageQueryKey(site.baseUrl, fullHref),
+          queryFn: ({ signal }) => fetchRawImageSrc(fullHref, site, signal),
+          staleTime: 60 * 1000,
+          gcTime: 3 * 60 * 1000,
+        });
       } finally {
         setRawLoading(false);
       }
     },
-    [site],
-  );
-
-  const loadDetail = useCallback(
-    async (target: GalleryImage) => {
-      setLoading(true);
-      setLoadFail(false);
-      setDisplayRaw(false);
-      setMessage('');
-      try {
-        const response = await apiGetImageDetail(target.href, site);
-        if (response.statusCode !== 200) {
-          throw new Error(`detail request failed: ${response.statusCode}`);
-        }
-
-        const parsed = parseImageDetail(response.data, target.href);
-        if (!parsed) {
-          throw new Error('detail parse failed');
-        }
-
-        setDetail(parsed);
-        detailRef.current = parsed;
-        //设置收藏状态
-        if (Array.isArray(parsed.info['Favorites:'])) {
-          let fav = parsed.info['Favorites:'][0];
-          if (fav.name === 'Add to Favorites') {
-            setIsFav(false);
-          } else if (fav.name === 'Remove from Favorites') {
-            setIsFav(true);
-          }
-        }
-        if (settings.preLoadRawImg) {
-          // RN Android does not have uniapp's plus.downloader. Prefetch keeps
-          // the feature useful without creating a custom native download layer.
-          const rawSrc = await resolveRawImage(parsed);
-          if (rawSrc) {
-            parsed.fullSrc = rawSrc;
-            Image.prefetch(absoluteImageUrl(rawSrc, site));
-            setDetail({...parsed});
-          }
-        }
-      } catch(e:any) {
-        setLoadFailMsg(e.message);
-        setLoadFail(true);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [resolveRawImage, settings.preLoadRawImg, site],
+    [queryClient, site],
   );
 
   useEffect(() => {
-    loadDetail(currentImage);
-  }, [currentImage, loadDetail]);
+    if (!detail || !settings.preLoadRawImg) {
+      return;
+    }
+
+    let active = true;
+    resolveRawImage(detail)
+      .then(nextRawSrc => {
+        if (active && nextRawSrc) {
+          Image.prefetch(absoluteImageUrl(nextRawSrc, site));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [detail, resolveRawImage, settings.preLoadRawImg, site]);
 
   const currentIndex = useMemo(
     () => upNextCache.findIndex(item => item.href === currentImage.href),
@@ -190,19 +182,22 @@ export const ImageDetailPage = ({
   );
 
   const showRawImage = async () => {
-    if (!detailRef.current) {
+    if (!detail) {
       return;
     }
 
-    const rawSrc = await resolveRawImage(detailRef.current);
-    if (!rawSrc) {
+    try {
+      const nextRawSrc = await resolveRawImage(detail);
+      if (!nextRawSrc) {
+        setMessage('原图地址加载失败');
+        return;
+      }
+
+      setRawSrc(nextRawSrc);
+      setDisplayRaw(true);
+    } catch {
       setMessage('原图地址加载失败');
-      return;
     }
-
-    detailRef.current.fullSrc = rawSrc;
-    setDetail({...detailRef.current});
-    setDisplayRaw(true);
   };
 
   const addFavorite = async () => {
@@ -215,20 +210,26 @@ export const ImageDetailPage = ({
       toast.error('图片 ID 获取失败');
       return;
     }
-    setFavLoading(true);
     try {
-      const response = await apiAddFav(pid, site);
+      const response = await favoriteMutation.mutateAsync(pid);
       if (response.statusCode !== 200) {
         throw new Error(`favorite request failed: ${response.statusCode}`);
       }
 
       const action = parseFavoriteAction(response.data);
       if (action === 'added') {
+        //主要是去掉收藏列表页的缓存 invalid cache list in fav page
+        await queryClient.invalidateQueries({
+          queryKey: galleryQueryPrefix(site.baseUrl, 'favorites'),
+        });
         toast.success('收藏成功');
         if (currentImageRef.current.href === favoriteHref) {
           setIsFav(true);
         }
       } else if (action === 'removed') {
+        await queryClient.invalidateQueries({
+          queryKey: galleryQueryPrefix(site.baseUrl, 'favorites'),
+        });
         toast.info('已取消收藏');
         if (currentImageRef.current.href === favoriteHref) {
           setIsFav(false);
@@ -238,15 +239,13 @@ export const ImageDetailPage = ({
       }
     } catch {
       toast.error('收藏操作失败，请稍后重试');
-    } finally {
-      setFavLoading(false);
     }
   };
 
   const metadata = detail ? buildMetadata(detail) : null;
 
   const downloadRawImage = async () => {
-    if (!detailRef.current || rawDownloading) {
+    if (!detail || rawDownloading) {
       return;
     }
 
@@ -259,16 +258,15 @@ export const ImageDetailPage = ({
         return;
       }
 
-      const rawSrc = await resolveRawImage(detailRef.current);
-      if (!rawSrc) {
+      const nextRawSrc = await resolveRawImage(detail);
+      if (!nextRawSrc) {
         setMessage('图片地址加载失败');
         return;
       }
 
-      detailRef.current.fullSrc = rawSrc;
-      setDetail({...detailRef.current});
+      setRawSrc(nextRawSrc);
 
-      const rawUri = absoluteImageUrl(rawSrc, site);
+      const rawUri = absoluteImageUrl(nextRawSrc, site);
       const fileName = buildDownloadFileName(metadata?.filename, rawUri);
       const mime = getImageMimeType(fileName);
 
@@ -303,9 +301,10 @@ export const ImageDetailPage = ({
     }
   };
 
+  const rawImageSource = rawSrc || detail?.fullSrc || '';
   const imageSource = detail
-    ? displayRaw && detail.fullSrc
-      ? detail.fullSrc
+    ? displayRaw && rawImageSource
+      ? rawImageSource
       : detail.normalSrc
     : currentImage.album;
   const imageUri = absoluteImageUrl(imageSource, site);
@@ -325,12 +324,12 @@ export const ImageDetailPage = ({
       <AppHeader title="图片详情" colors={colors} onBack={onBack} />
       {loading ? (
         <LoadingState colors={colors} text="正在加载图片详情" />
-      ) : loadFail || !detail ? (
+      ) : !detail ? (
         <EmptyState
           title={'图片详情加载失败' + loadFailMsg}
           actionText="重试"
           colors={colors}
-          onAction={() => loadDetail(currentImage)}
+          onAction={() => detailQuery.refetch()}
         />
       ) : (
         <ScrollView
@@ -451,6 +450,15 @@ const extractImagePid = (href: string) => {
   }
 
   return href.match(/\?\/(\d+)(?:\/|$)/)?.[1] ?? null;
+};
+
+const getFavoriteState = (detail: ImageDetail | undefined) => {
+  const favorites = detail?.info['Favorites:'];
+  if (!Array.isArray(favorites)) {
+    return false;
+  }
+
+  return favorites.some(item => item.name === 'Remove from Favorites');
 };
 
 const buildMetadata = (detail: ImageDetail) => {

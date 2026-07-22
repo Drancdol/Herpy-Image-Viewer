@@ -17,6 +17,8 @@ export type RequestOptions = AxiosRequestConfig & {
   persistAuthorizationCookies?: boolean;
 };
 
+export type RequestSignal = RequestOptions['signal'];
+
 const DEFAULT_TIMEOUT = 30000;
 
 export const normalizePath = (href: string, site: SiteConfig) => {

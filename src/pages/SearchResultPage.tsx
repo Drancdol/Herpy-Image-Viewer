@@ -22,11 +22,12 @@ export const SearchResultPage = ({
 }: SearchResultPageProps) => {
   const site = useAppSelector(state => state.app.site);
   const loadHtml = useCallback(
-    async (page: number) => {
+    async (page: number, signal?: AbortSignal) => {
       const response = await apiSearch(
         config.inputData,
         {...config, page},
         site,
+        {signal},
       );
       if (response.statusCode !== 200) {
         throw new Error(`search request failed: ${response.statusCode}`);
