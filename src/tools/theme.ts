@@ -9,6 +9,7 @@ export type ThemeColors = {
   textMuted: string;
   border: string;
   primary: string;
+  success: string;
   primarySoft: string;
   accent: string;
   danger: string;
@@ -26,6 +27,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     textMuted: '#65748b',
     border: '#d7dee8',
     primary: '#2772d8',
+    success: '#00ff2e',
     primarySoft: '#dcecff',
     accent: '#d7831e',
     danger: '#c54242',
@@ -41,6 +43,7 @@ export const THEMES: Record<ThemeName, ThemeColors> = {
     textMuted: '#a9b7c6',
     border: '#314356',
     primary: '#62a7ff',
+    success: '#00ff2e',
     primarySoft: '#223a57',
     accent: '#f0a747',
     danger: '#ff7979',

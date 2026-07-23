@@ -185,7 +185,9 @@ export const ImageDetailPage = ({
     if (!detail) {
       return;
     }
-
+    if (displayRaw){
+      return;
+    }
     try {
       const nextRawSrc = await resolveRawImage(detail);
       if (!nextRawSrc) {
@@ -264,36 +266,41 @@ export const ImageDetailPage = ({
         return;
       }
 
-      setRawSrc(nextRawSrc);
+      //setRawSrc(nextRawSrc); no need to set rawSrc because showDetail will set
 
-      const rawUri = absoluteImageUrl(nextRawSrc, site);
-      const fileName = buildDownloadFileName(metadata?.filename, rawUri);
+      const rawUrl = absoluteImageUrl(nextRawSrc, site);
+      const fileName = buildDownloadFileName(metadata?.filename, rawUrl);
       const mime = getImageMimeType(fileName);
 
       if (Platform.OS === 'android') {
+        const useMediaStoreDownloads = Number(Platform.Version) >= 29;
         await ReactNativeBlobUtil.config({
           addAndroidDownloads: {
             useDownloadManager: true,
             notification: true,
             mediaScannable: true,
-            storeInDownloads: true,
             title: fileName,
             description: 'Herpy Image',
             mime,
-            path: `${ReactNativeBlobUtil.fs.dirs.DownloadDir}/${fileName}`,
+            ...(useMediaStoreDownloads
+              ? { storeInDownloads: true }
+              : {
+                  path: `${ReactNativeBlobUtil.fs.dirs.DownloadDir}/${fileName}`,
+                }),
           },
-        }).fetch('GET', rawUri);
+        }).fetch('GET', rawUrl);
       } else {
         await ReactNativeBlobUtil.config({
           path: `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${fileName}`,
-        }).fetch('GET', rawUri);
+        }).fetch('GET', rawUrl);
       }
 
-      setMessage(
-        Platform.OS === 'android'
-          ? '图片已下载到下载目录'
-          : '图片已保存到应用目录',
-      );
+      // setMessage(
+      //   Platform.OS === 'android'
+      //     ? '图片已下载到下载目录'
+      //     : '图片已保存到应用目录',
+      // );
+      toast.success(Platform.OS === 'android'? '图片已下载到下载目录': '图片已保存到应用目录',1500)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '图片下载失败');
     } finally {
@@ -307,7 +314,7 @@ export const ImageDetailPage = ({
       ? rawImageSource
       : detail.normalSrc
     : currentImage.album;
-  const imageUri = absoluteImageUrl(imageSource, site);
+  const imageUrl = absoluteImageUrl(imageSource, site);
   const imageRatio = detail?.height && detail.width ? detail.height / detail.width : 1;
   const imageHeight = Math.max(220, Math.round((width - 16) * imageRatio));
   const pageStyle = {backgroundColor: colors.background};
@@ -339,7 +346,7 @@ export const ImageDetailPage = ({
         >
           <Pressable
             accessibilityRole="imagebutton"
-            disabled={!imageUri}
+            disabled={!imageUrl}
             onPress={() => setPreviewVisible(true)}
           >
             <ThumbnailImage
@@ -436,7 +443,7 @@ export const ImageDetailPage = ({
       )}
       <ZoomImageModal
         visible={previewVisible}
-        uri={imageUri}
+        uri={imageUrl}
         onRequestClose={() => setPreviewVisible(false)}
       />
     </View>

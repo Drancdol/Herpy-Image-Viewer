@@ -129,7 +129,7 @@ export const ToastHost = ({colors}: ToastHostProps) => {
 
   const accentColor =
     current.type === 'success'
-      ? colors.primary
+      ? colors.success
       : current.type === 'error'
         ? colors.danger
         : colors.accent;
