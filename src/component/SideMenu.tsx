@@ -112,7 +112,6 @@ export const SideMenu = ({
           },
         ]}>
         <View style={[styles.profile, {backgroundColor: colors.primarySoft}]}>
-          <Image source={avatar} style={styles.avatar} />
           <View style={styles.profileText}>
             <Text style={[styles.nickname, {color: colors.text}]}>Welcome</Text>
             <Text style={[styles.siteName, {color: colors.textMuted}]}>
@@ -169,7 +168,7 @@ const MenuItem = ({label, Icon, colors, onPress}: MenuItemProps) => (
       {backgroundColor: pressed ? colors.primarySoft : colors.surface},
     ]}>
     <View style={styles.menuIcon}>
-      <Icon size={25} color={colors.primary} />
+      <Icon size={23} color={colors.primary} />
     </View>
     <Text style={[styles.menuLabel, {color: colors.text}]}>{label}</Text>
   </Pressable>
@@ -205,7 +204,7 @@ const styles = StyleSheet.create({
   },
   profileText: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 8,
   },
   nickname: {
     fontSize: 18,
