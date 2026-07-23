@@ -388,7 +388,7 @@ export const ImageDetailPage = ({
               />
               <ActionButton
                 label={
-                  rawLoading ? '加载中' : displayRaw ? '已显示原图' : '查看原图'
+                  rawLoading ? '加载中' : displayRaw ? '已切换原图' : '查看原图'
                 }
                 colors={colors}
                 accent
