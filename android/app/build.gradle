@@ -88,9 +88,9 @@ android {
         }
     }
 
-    namespace "com.herpyviewer"
+    namespace "com.hiaviewer"
     defaultConfig {
-        applicationId "com.herpyviewer"
+        applicationId "com.hiaviewer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

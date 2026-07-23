@@ -116,7 +116,7 @@ export const SideMenu = ({
           <View style={styles.profileText}>
             <Text style={[styles.nickname, {color: colors.text}]}>Welcome</Text>
             <Text style={[styles.siteName, {color: colors.textMuted}]}>
-              HerpyImageViewer
+              HiaViewer
             </Text>
           </View>
         </View>

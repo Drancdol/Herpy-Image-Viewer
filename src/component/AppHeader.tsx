@@ -21,7 +21,7 @@ type AppHeaderProps = {
 };
 
 export const AppHeader = ({
-  title = 'HerpyViewer',
+  title = 'HiaViewer',
   searchPlaceholder,
   colors,
   onBack,
