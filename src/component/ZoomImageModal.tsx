@@ -742,7 +742,7 @@ export const ZoomImageModal = ({
             onPress={requestClose}
             style={[styles.closeButton, { top: Math.max(insets.top + 8, 16) }]}
           >
-            <IconXCircle size={24} color="#fff" />
+            <IconXCircle size={22} color="#fff" />
           </Pressable>
         </View>
       </GestureHandlerRootView>
@@ -776,7 +776,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.48)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.65)',
   }
 });
