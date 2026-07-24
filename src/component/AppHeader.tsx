@@ -8,6 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import type {ThemeColors} from '../tools/theme';
+import { IconMenu } from '../assets/icon/Menu.tsx';
 
 type AppHeaderProps = {
   title?: string;
@@ -47,7 +48,7 @@ export const AppHeader = ({
         onPress={onMenu}
         style={styles.iconButton}
       >
-        <Text style={[styles.menuText, { color: colors.text }]}>☰</Text>
+        <IconMenu size={28} color={colors.text} />
       </Pressable>
     )}
 
@@ -87,12 +88,12 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(127,127,127,0.24)',
   },
   iconButton: {
-    width: 42,
+    width: 40,
     height: 42,
     textAlign: 'center',
     display: 'flex',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   iconText: {
     fontSize: 18,
@@ -100,11 +101,6 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     fontWeight: '900',
     textAlign: 'center',
-  },
-  menuText: {
-    fontSize: 25,
-    lineHeight: 30,
-    fontWeight: '700',
   },
   searchBox: {
     flex: 1,
