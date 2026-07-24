@@ -1,7 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {
   Animated,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -12,8 +11,8 @@ import {IconHome} from '../assets/icon/Home';
 import {IconSetting} from '../assets/icon/Setting';
 import {IconStar} from '../assets/icon/Star';
 import type {ThemeColors} from '../tools/theme';
+import { useAppSelector } from '../store/hooks.ts';
 
-const avatar = require('../assets/img/icon.png');
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 type SideMenuProps = {
@@ -38,7 +37,7 @@ export const SideMenu = ({
   const translateX = useRef(new Animated.Value(-menuWidth)).current;
   const maskOpacity = useRef(new Animated.Value(0)).current;
   const [shouldRender, setShouldRender] = useState(open);
-
+  const user = useAppSelector(state => state.user.user)
   useEffect(() => {
     let animationFrame: number | null = null;
 
@@ -108,13 +107,16 @@ export const SideMenu = ({
           {
             width: menuWidth,
             backgroundColor: colors.surface,
-            transform: [{translateX}],
+            transform: [{ translateX }],
           },
-        ]}>
-        <View style={[styles.profile, {backgroundColor: colors.primarySoft}]}>
+        ]}
+      >
+        <View style={[styles.profile, { backgroundColor: colors.primarySoft }]}>
           <View style={styles.profileText}>
-            <Text style={[styles.nickname, {color: colors.text}]}>Welcome</Text>
-            <Text style={[styles.siteName, {color: colors.textMuted}]}>
+            <Text style={[styles.nickname, { color: colors.text }]}>
+              {user.username || 'Welcome'}
+            </Text>
+            <Text style={[styles.siteName, { color: colors.textMuted }]}>
               HiaViewer
             </Text>
           </View>

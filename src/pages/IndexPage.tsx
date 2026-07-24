@@ -20,6 +20,7 @@ import {fetchMainPage} from '../query/fetchers';
 import {mainPageQueryKey} from '../query/keys';
 import type {ThemeColors} from '../tools/theme';
 import type {AlbumSummary, GalleryImage} from '../tools/types';
+import { UserDataKey } from '../storage/user.ts';
 
 type IndexPageProps = {
   colors: ThemeColors;
@@ -96,6 +97,7 @@ const MainPageContent = ({colors}: {colors: ThemeColors}) => {
   useEffect(() => {
     if (data) {
       dispatch(userActions.setLoginState(data.loginOutHref));
+      dispatch(userActions.setOneOfUserData({key:UserDataKey.Username,value:data.userName}));
     }
   }, [data, dispatch]);
 

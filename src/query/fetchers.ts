@@ -6,6 +6,7 @@ import type {ImageDetail, MainCategory, SiteConfig} from '../tools/types';
 export type MainPageData = {
   categories: MainCategory[];
   loginOutHref: string;
+  userName: string;
 };
 
 export const fetchMainPage = async (
@@ -16,10 +17,11 @@ export const fetchMainPage = async (
   if (response.statusCode !== 200) {
     throw new Error(`main request failed: ${response.statusCode}`);
   }
-
+  let aTag = getLoginOutHref(response.data);
   return {
     categories: parseMainPage(response.data),
-    loginOutHref: getLoginOutHref(response.data),
+    loginOutHref: aTag.href,
+    userName: aTag.userName,
   };
 };
 

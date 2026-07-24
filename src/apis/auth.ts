@@ -21,14 +21,30 @@ const stripHtml = (html: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-export const getLoginOutHref = (html: string): string => {
-  const href = html.match(
-    /<a\b[^>]*\bhref\s*=\s*(["'])(\/?logout\.php\?[^"']*)\1[^>]*>\s*logout\s*\[[^\]]+\]\s*<\/a>/i,
-  )?.[2];
+export const getLoginOutHref = (html: string): { href: string; userName: string } => {
+  // 正则新增第3捕获组：\[([^\]]+)\] 匹配括号内用户名
+  const reg =
+    /<a\b[^>]*\bhref\s*=\s*(["'])(\/?logout\.php\?[^"']*)\1[^>]*>\s*logout\s*\[([^\]]+)\]\s*<\/a>/i;
+  const matchResult = html.match(reg);
 
-  return href
-    ? href.replace(/&amp;/gi, '&').split(/&referer=/i)[0]
-    : '';
+  if (!matchResult) {
+    return {
+      href: '',
+      userName: '',
+    };
+  }
+
+  // 第2分组 链接，第3分组 括号内用户名
+  let rawHref = matchResult[2];
+  const userName = matchResult[3].trim();
+
+  // 原有链接处理
+  const realHref = rawHref.replace(/&amp;/gi, '&').split(/&referer=/i)[0];
+
+  return {
+    href: realHref,
+    userName: userName,
+  };
 };
 
 export const hasLoggedInAccount = (html: string): boolean =>
