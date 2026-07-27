@@ -21,9 +21,10 @@ import {LoginPage} from './src/pages/LoginPage';
 import {SearchPage} from './src/pages/SearchPage';
 import {SearchResultPage} from './src/pages/SearchResultPage';
 import {SettingPage} from './src/pages/SettingPage';
+import {UserPage} from './src/pages/UserPage';
 import {clearExpiredAuthorizationCookies} from './src/storage/authorization';
 import {queryClient} from './src/query/client';
-import {appActions, store} from './src/store';
+import {appActions, store, userActions} from './src/store';
 import {useAppDispatch, useAppSelector} from './src/store/hooks';
 import {getTheme} from './src/tools/theme';
 import type {GalleryImage, SearchConfig} from './src/tools/types';
@@ -33,6 +34,7 @@ type RootStackParamList = {
   favorites: undefined;
   login: undefined;
   settings: undefined;
+  user: undefined;
   search: undefined;
   searchResult: {config: SearchConfig};
   imageDetail: {image: GalleryImage};
@@ -62,8 +64,11 @@ function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    clearExpiredAuthorizationCookies();
-  }, []);
+    if (clearExpiredAuthorizationCookies()) {
+      dispatch(userActions.clearUserData());
+    }
+    // 加载本地用户数据到内存 如果后续其他页面要用再补充加载
+  }, [dispatch]);
 
   const navigationTheme = useMemo(() => {
     const baseTheme = theme === 'dark' ? DarkTheme : DefaultTheme;
@@ -145,6 +150,15 @@ function AppShell() {
                 />
               )}
             </Stack.Screen>
+            <Stack.Screen name="user">
+              {({navigation}) => (
+                <UserPage
+                  colors={colors}
+                  onBack={() => navigation.goBack()}
+                  onLogin={() => navigation.navigate('login')}
+                />
+              )}
+            </Stack.Screen>
             <Stack.Screen name="login">
               {({navigation}) => (
                 <LoginPage
@@ -206,6 +220,7 @@ function AppShell() {
           navigationRef.navigate('favorites');
         }}
         onSettings={() => navigationRef.navigate('settings')}
+        onUser={() => navigationRef.navigate('user')}
       />
       <ToastHost colors={colors} />
     </SafeAreaView>

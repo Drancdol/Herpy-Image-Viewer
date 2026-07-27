@@ -1,4 +1,5 @@
 import {HERPY_SITE} from './static';
+import type {UserData} from '../storage/user';
 import type {
   AlbumSummary,
   GalleryImage,
@@ -29,8 +30,113 @@ export const cleanText = (value = '') =>
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim(),
+    .trim(),
   );
+
+const createEmptyUserData = (): UserData => ({
+  username: '',
+  status: '',
+  joinDate: '',
+  group: '',
+  email: '',
+  location: '',
+  interests: '',
+  website: '',
+  occupation: '',
+  biography: '',
+  diskUsage: '',
+  filesUploaded: '',
+  lastComment: '',
+  lastUploadedFile: '',
+});
+
+const extractProfileForm = (html: string) =>
+  html.match(
+    /<form\b(?=[^>]*\bid\s*=\s*["']cpgform["'])[^>]*>([\s\S]*?)<\/form>/i,
+  )?.[1] ?? '';
+
+const parseProfileRows = (html: string) => {
+  const values = new Map<string, string>();
+  const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+  let rowMatch: RegExpExecArray | null;
+
+  while ((rowMatch = rowRegex.exec(html))) {
+    const cells = [...rowMatch[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)];
+    if (cells.length !== 2) {
+      continue;
+    }
+
+    const label = cleanText(cells[0][1]).replace(/:$/, '').toLowerCase();
+    if (label) {
+      values.set(label, cleanText(cells[1][1]));
+    }
+  }
+
+  return values;
+};
+
+const getNamedInputValue = (html: string, name: string) => {
+  const inputRegex = /<input\b[^>]*>/gi;
+  let inputMatch: RegExpExecArray | null;
+
+  while ((inputMatch = inputRegex.exec(html))) {
+    if (getAttribute(inputMatch[0], 'name') === name) {
+      return getAttribute(inputMatch[0], 'value');
+    }
+  }
+
+  return '';
+};
+
+const getNamedTextareaValue = (html: string, name: string) => {
+  const textareaRegex = /<textarea\b([^>]*)>([\s\S]*?)<\/textarea>/gi;
+  let textareaMatch: RegExpExecArray | null;
+
+  while ((textareaMatch = textareaRegex.exec(html))) {
+    if (getAttribute(textareaMatch[1], 'name') === name) {
+      return cleanText(textareaMatch[2]);
+    }
+  }
+
+  return '';
+};
+
+export const isUserProfileLoginRequired = (html: string): boolean =>
+  /\bcpg_message_warning\b/i.test(html) &&
+  /you\s+don't\s+have\s+permission\s+to\s+access\s+this\s+page\.?/i.test(
+    cleanText(html),
+  );
+
+export const parseUserProfile = (html: string): UserData | null => {
+  const formHtml = extractProfileForm(html);
+  if (!formHtml) {
+    return null;
+  }
+
+  const rows = parseProfileRows(formHtml);
+  const username = rows.get('username') ?? '';
+  if (!username) {
+    return null;
+  }
+
+  return {
+    ...createEmptyUserData(),
+    username,
+    status: rows.get('status') ?? '',
+    joinDate: rows.get('joined') ?? '',
+    group: rows.get('group') ?? '',
+    email: rows.get('email') ?? '',
+    location: getNamedInputValue(formHtml, 'user_profile1'),
+    interests: getNamedInputValue(formHtml, 'user_profile2'),
+    website: getNamedInputValue(formHtml, 'user_profile3'),
+    occupation: getNamedInputValue(formHtml, 'user_profile4'),
+    biography: getNamedTextareaValue(formHtml, 'user_profile6'),
+    diskUsage: rows.get('disk usage') ?? '',
+    filesUploaded: rows.get('files uploaded') ?? '',
+    lastComment: rows.get('last comment') ?? '',
+    lastUploadedFile: rows.get('last uploaded file') ?? '',
+  };
+};
 
 export const normalizeHref = (href = '') =>
   decodeHtml(href).replace(/^\/+/, '').split('#')[0];

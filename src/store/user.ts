@@ -1,5 +1,9 @@
 import {createSlice, type PayloadAction} from '@reduxjs/toolkit';
-import { removeStoAllUser, setStoUserData, UserData } from '../storage/user.ts';
+import {
+  removeStoAllUser,
+  setStoUserData,
+  type UserData,
+} from '../storage/user.ts';
 type UserState = {
   loggedIn: boolean;
   loginOutHref: string;
@@ -23,8 +27,8 @@ const initialState: UserState = {
     diskUsage: '',
     filesUploaded: '',
     lastComment: '',
-    lastUploadedFile: '',
-  },
+    lastUploadedFile: ''
+  }
 };
 
 const userSlice = createSlice({
@@ -37,11 +41,11 @@ const userSlice = createSlice({
     },
     setUserData(state, action: PayloadAction<UserData>) {
       Object.assign(state.user, action.payload);
-      let data = action.payload as UserData;
-      let keys = Object.keys(data);
-      keys.forEach((k) => {
+      const data = action.payload;
+      const keys = Object.keys(data);
+      keys.forEach(k => {
         setStoUserData(k as keyof UserData, action.payload[k as keyof UserData] || '');
-      })
+      });
     },
     setOneOfUserData(state, action: PayloadAction<{ key: keyof UserData; value: string }>) {
       state.user[action.payload.key] = action.payload.value;
@@ -64,7 +68,7 @@ const userSlice = createSlice({
         lastComment: '',
         lastUploadedFile: '',
       };
-      removeStoAllUser()
+      removeStoAllUser();
     },
   },
 });

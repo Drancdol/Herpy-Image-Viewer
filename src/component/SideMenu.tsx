@@ -22,6 +22,7 @@ type SideMenuProps = {
   onHome: () => void;
   onFavorites: () => void;
   onSettings: () => void;
+  onUser: () => void;
 };
 
 export const SideMenu = ({
@@ -31,6 +32,7 @@ export const SideMenu = ({
   onHome,
   onFavorites,
   onSettings,
+  onUser,
 }: SideMenuProps) => {
   const {width} = useWindowDimensions();
   const menuWidth = Math.min(width * 0.78, 320);
@@ -111,7 +113,17 @@ export const SideMenu = ({
           },
         ]}
       >
-        <View style={[styles.profile, { backgroundColor: colors.primarySoft }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="查看个人资料"
+          onPress={() => {
+            onUser();
+            onClose();
+          }}
+          style={({pressed}) => [
+            styles.profile,
+            {backgroundColor: pressed ? colors.surfaceStrong : colors.primarySoft},
+          ]}>
           <View style={styles.profileText}>
             <Text style={[styles.nickname, { color: colors.text }]}>
               {user.username || 'Welcome'}
@@ -120,7 +132,7 @@ export const SideMenu = ({
               HiaViewer
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <MenuItem
           label="首页"

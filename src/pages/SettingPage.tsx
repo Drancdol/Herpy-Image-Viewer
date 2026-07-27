@@ -55,6 +55,7 @@ export const SettingPage = ({colors, onBack, onLogin}: SettingPageProps) => {
       clearAuthorizationCookies();
       await clearSiteQueryCache(queryClient, site.baseUrl);
       dispatch(userActions.setLoginState(''));
+      dispatch(userActions.clearUserData());
       toast.success('已退出登录');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '退出登录请求失败');

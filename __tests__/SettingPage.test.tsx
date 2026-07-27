@@ -70,7 +70,11 @@ const renderSettingPage = (
     </QueryClientProvider>,
   );
 
-const cachedData: MainPageData = {categories: [], loginOutHref: ''};
+const cachedData: MainPageData = {
+  categories: [],
+  loginOutHref: '',
+  userName: '',
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -106,7 +110,10 @@ test('clears auth state and site queries after a successful logout', async () =>
   expect(clearCookiesMock).toHaveBeenCalledTimes(1);
   expect(queryClient.getQueryData(siteQueryKey)).toBeUndefined();
   expect(queryClient.getQueryData(otherSiteQueryKey)).toEqual(cachedData);
-  expect(store.getState().user).toEqual({loggedIn: false, loginOutHref: ''});
+  expect(store.getState().user).toMatchObject({
+    loggedIn: false,
+    loginOutHref: '',
+  });
 
   ReactTestRenderer.act(() => {
     renderer?.unmount();
@@ -140,7 +147,7 @@ test('keeps auth state and queries when logout fails', async () => {
 
   expect(clearCookiesMock).not.toHaveBeenCalled();
   expect(queryClient.getQueryData(siteQueryKey)).toEqual(cachedData);
-  expect(store.getState().user).toEqual({
+  expect(store.getState().user).toMatchObject({
     loggedIn: true,
     loginOutHref: logoutHref,
   });

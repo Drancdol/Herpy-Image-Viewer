@@ -11,7 +11,7 @@ jest.mock('../src/apis/request', () => ({
 }));
 
 const accountHomepageHtml = `
-  <td style="background-image:url(themes/rainy_day/images/button1_r1_c2.gif)">
+  <td>
     <a href="logout.php?form_token=eef1417e50b3806ef91459a88fe441e1&amp;timestamp=1784530481&amp;referer=thumbnails.php%3Falbum%3Dfavpics" title="Log me out">Logout [Drancdol]</a>
   </td>
 `;
@@ -28,9 +28,10 @@ beforeEach(() => {
 
 test('recognizes an account logout link on the homepage', () => {
   expect(hasLoggedInAccount(accountHomepageHtml)).toBe(true);
-  expect(getLoginOutHref(accountHomepageHtml)).toBe(
-    'logout.php?form_token=eef1417e50b3806ef91459a88fe441e1&timestamp=1784530481',
-  );
+  expect(getLoginOutHref(accountHomepageHtml)).toEqual({
+    href: 'logout.php?form_token=eef1417e50b3806ef91459a88fe441e1&timestamp=1784530481',
+    userName: 'Drancdol',
+  });
 });
 
 test.each([
@@ -40,7 +41,7 @@ test.each([
   '<a href="logout.php?token=abc">Welcome [Drancdol]</a>',
 ])('does not mistake a non-account link for a login: %s', html => {
   expect(hasLoggedInAccount(html)).toBe(false);
-  expect(getLoginOutHref(html)).toBe('');
+  expect(getLoginOutHref(html)).toEqual({href: '', userName: ''});
 });
 
 test('recognizes the server logout confirmation message', () => {

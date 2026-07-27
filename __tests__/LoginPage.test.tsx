@@ -57,7 +57,11 @@ test('clears site queries after a successful login', async () => {
   const queryKey = mainPageQueryKey(site.baseUrl);
   const galleryKey = galleryQueryKey(site.baseUrl, 'favorites', 1);
   const otherSiteQueryKey = mainPageQueryKey('https://other.example');
-  const otherSiteData: MainPageData = {categories: [], loginOutHref: ''};
+  const otherSiteData: MainPageData = {
+    categories: [],
+    loginOutHref: '',
+    userName: '',
+  };
   const onSuccess = jest.fn();
   const apiLoginMock = apiLogin as jest.MockedFunction<typeof apiLogin>;
   const getLoginOutHrefMock = getLoginOutHref as jest.MockedFunction<
@@ -69,10 +73,14 @@ test('clears site queries after a successful login', async () => {
     success: true,
     message: 'Login succeeded.',
   });
-  getLoginOutHrefMock.mockReturnValue('logout.php?form_token=token');
+  getLoginOutHrefMock.mockReturnValue({
+    href: 'logout.php?form_token=token',
+    userName: 'alice',
+  });
   queryClient.setQueryData<MainPageData>(queryKey, {
     categories: [],
     loginOutHref: '',
+    userName: '',
   });
   queryClient.setQueryData(galleryKey, {
     images: [],
@@ -116,7 +124,7 @@ test('clears site queries after a successful login', async () => {
   expect(queryClient.getQueryData(queryKey)).toBeUndefined();
   expect(queryClient.getQueryData(galleryKey)).toBeUndefined();
   expect(queryClient.getQueryData(otherSiteQueryKey)).toEqual(otherSiteData);
-  expect(store.getState().user).toEqual({
+  expect(store.getState().user).toMatchObject({
     loggedIn: true,
     loginOutHref: 'logout.php?form_token=token',
   });
@@ -133,7 +141,11 @@ test('keeps existing queries after a failed login', async () => {
   const queryClient = makeQueryClient();
   const site = store.getState().app.site;
   const queryKey = mainPageQueryKey(site.baseUrl);
-  const cachedData: MainPageData = {categories: [], loginOutHref: ''};
+  const cachedData: MainPageData = {
+    categories: [],
+    loginOutHref: '',
+    userName: '',
+  };
   const onSuccess = jest.fn();
   const apiLoginMock = apiLogin as jest.MockedFunction<typeof apiLogin>;
   apiLoginMock.mockResolvedValue({

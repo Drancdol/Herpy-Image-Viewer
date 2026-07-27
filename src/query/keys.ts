@@ -4,6 +4,9 @@ export const siteQueryKey = (siteBaseUrl: string) =>
 export const mainPageQueryKey = (siteBaseUrl: string) =>
   [...siteQueryKey(siteBaseUrl), 'main-page'] as const;
 
+export const userProfileQueryKey = (siteBaseUrl: string) =>
+  [...siteQueryKey(siteBaseUrl), 'user-profile'] as const;
+
 export const galleryQueryKey = (
   siteBaseUrl: string,
   requestKey: string,

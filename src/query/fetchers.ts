@@ -1,6 +1,20 @@
 import {getLoginOutHref} from '../apis/auth';
-import {apiGetImageDetail, apiGetSingleImgUrl, apiMainPage} from '../apis/gallery';
-import {parseImageDetail, parseMainPage, parseRawImageSrc} from '../tools/process';
+import {
+  apiGetImageDetail,
+  apiGetSingleImgUrl,
+  apiMainPage,
+} from '../apis/gallery';
+import {
+  isUserProfileLoginRequired,
+  parseImageDetail,
+  parseMainPage,
+  parseRawImageSrc,
+  parseUserProfile,
+} from '../tools/process';
+import {
+  apiGetUserProfile
+} from '../apis/auth'
+import type {UserData} from '../storage/user';
 import type {ImageDetail, MainCategory, SiteConfig} from '../tools/types';
 
 export type MainPageData = {
@@ -8,6 +22,10 @@ export type MainPageData = {
   loginOutHref: string;
   userName: string;
 };
+
+export type UserProfilePageData =
+  | {loginRequired: true}
+  | {loginRequired: false; user: UserData; loginOutHref: string};
 
 export const fetchMainPage = async (
   site: SiteConfig,
@@ -22,6 +40,31 @@ export const fetchMainPage = async (
     categories: parseMainPage(response.data),
     loginOutHref: aTag.href,
     userName: aTag.userName,
+  };
+};
+
+export const fetchUserProfile = async (
+  site: SiteConfig,
+  signal?: AbortSignal,
+): Promise<UserProfilePageData> => {
+  const response = await apiGetUserProfile(site, {signal});
+  if (response.statusCode !== 200) {
+    throw new Error(`profile request failed: ${response.statusCode}`);
+  }
+
+  if (isUserProfileLoginRequired(response.data)) {
+    return {loginRequired: true};
+  }
+
+  const user = parseUserProfile(response.data);
+  if (!user) {
+    throw new Error('profile parse failed');
+  }
+
+  return {
+    loginRequired: false,
+    user,
+    loginOutHref: getLoginOutHref(response.data).href,
   };
 };
 

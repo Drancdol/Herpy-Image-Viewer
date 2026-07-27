@@ -16,7 +16,7 @@ import {parseMainPage} from '../src/tools/process';
 import type {MainCategory} from '../src/tools/types';
 
 jest.mock('../src/apis/auth', () => ({
-  getLoginOutHref: jest.fn(() => ''),
+  getLoginOutHref: jest.fn(() => ({href: '', userName: ''})),
 }));
 
 jest.mock('../src/apis/gallery', () => ({

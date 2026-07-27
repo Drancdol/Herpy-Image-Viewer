@@ -6,12 +6,12 @@ test('keeps login state and logout href in sync', () => {
     userActions.setLoginState('logout.php?form_token=token&timestamp=123'),
   );
 
-  expect(loggedInState).toEqual({
+  expect(loggedInState).toMatchObject({
     loggedIn: true,
     loginOutHref: 'logout.php?form_token=token&timestamp=123',
   });
 
-  expect(userReducer(loggedInState, userActions.setLoginState(''))).toEqual({
+  expect(userReducer(loggedInState, userActions.setLoginState(''))).toMatchObject({
     loggedIn: false,
     loginOutHref: '',
   });

@@ -1,5 +1,15 @@
 module.exports = {
-  arrowParens: 'avoid',
+  semi: true,
+  tabWidth: 2,
   singleQuote: true,
-  trailingComma: 'all',
+  printWidth: 120,
+  trailingComma: 'none',
+  endOfLine: 'auto',
+  useTabs: false,
+  quoteProps: 'consistent',
+  bracketSpacing: true,
+  bracketSameLine: false,
+  arrowParens: 'avoid',
+  vueIndentScriptAndStyle: true,
+  htmlWhitespaceSensitivity: 'css',
 };

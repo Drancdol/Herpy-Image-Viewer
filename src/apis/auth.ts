@@ -1,6 +1,6 @@
 import {HERPY_SITE} from '../tools/static';
-import type {SiteConfig} from '../tools/types';
-import {request} from './request';
+import type { SiteConfig} from '../tools/types';
+import {request, type RequestSignal } from './request';
 import type {ApiResponse} from './request';
 
 const formEncode = (data: Record<string, string>) =>
@@ -48,7 +48,7 @@ export const getLoginOutHref = (html: string): { href: string; userName: string 
 };
 
 export const hasLoggedInAccount = (html: string): boolean =>
-  Boolean(getLoginOutHref(html));
+  Boolean(getLoginOutHref(html).href);
 
 export const isLogoutSuccessful = (html: string): boolean => {
   const messageHtml = html.match(
@@ -139,3 +139,5 @@ export const apiLogout = async (
     success: response.statusCode === 200 && isLogoutSuccessful(response.data),
   };
 };
+export const apiGetUserProfile = (site: SiteConfig = HERPY_SITE, options?: { signal?: RequestSignal }) =>
+  request('profile.php?op=edit_profile', { site, ...options });

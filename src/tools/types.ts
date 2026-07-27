@@ -5,6 +5,7 @@ export type RouteName =
   | 'favorites'
   | 'login'
   | 'settings'
+  | 'user'
   | 'imageDetail'
   | 'search'
   | 'searchResult';
@@ -14,6 +15,7 @@ export type AppRoute =
   | {name: 'favorites'}
   | {name: 'login'}
   | {name: 'settings'}
+  | {name: 'user'}
   | {name: 'search'}
   | {name: 'searchResult'; params: {config: SearchConfig}}
   | {name: 'imageDetail'; params: {image: GalleryImage}};

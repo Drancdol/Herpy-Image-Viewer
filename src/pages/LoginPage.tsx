@@ -63,7 +63,7 @@ export const LoginPage = ({colors, onBack, onSuccess}: LoginPageProps) => {
 
       if (result.success) {
         await clearSiteQueryCache(queryClient, site.baseUrl);
-        dispatch(userActions.setLoginState(getLoginOutHref(result.data)));
+        dispatch(userActions.setLoginState(getLoginOutHref(result.data).href));
         setPassword('');
         onSuccess();
       }
