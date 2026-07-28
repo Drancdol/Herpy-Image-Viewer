@@ -73,11 +73,17 @@ const renderUserPage = (
   store: ReturnType<typeof makeStore>,
   queryClient: QueryClient,
   onLogin = jest.fn(),
+  onUpdate = jest.fn(),
 ) =>
   ReactTestRenderer.create(
     <QueryClientProvider client={queryClient}>
       <Provider store={store}>
-        <UserPage colors={THEMES.light} onBack={jest.fn()} onLogin={onLogin} />
+        <UserPage
+          colors={THEMES.light}
+          onBack={jest.fn()}
+          onLogin={onLogin}
+          onUpdate={onUpdate}
+        />
       </Provider>
     </QueryClientProvider>,
   );
@@ -208,6 +214,36 @@ test('shows a retry action after a profile request fails', async () => {
 
   expect(fetchUserProfileMock).toHaveBeenCalledTimes(2);
   expect(textValues(renderer!)).toContain('alice');
+
+  ReactTestRenderer.act(() => {
+    renderer?.unmount();
+  });
+  queryClient.clear();
+});
+
+test('opens the requested update form from the profile actions', async () => {
+  fetchUserProfileMock.mockResolvedValue(profileData);
+  const store = makeStore();
+  const queryClient = makeQueryClient();
+  const onUpdate = jest.fn();
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+
+  await ReactTestRenderer.act(async () => {
+    renderer = renderUserPage(store, queryClient, jest.fn(), onUpdate);
+  });
+  await ReactTestRenderer.act(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 20));
+  });
+
+  const profileButton = renderer!.root.findByProps({accessibilityLabel: '修改信息'});
+  const passwordButton = renderer!.root.findByProps({accessibilityLabel: '修改密码'});
+  ReactTestRenderer.act(() => {
+    profileButton.props.onPress();
+    passwordButton.props.onPress();
+  });
+
+  expect(onUpdate).toHaveBeenNthCalledWith(1, 'profile');
+  expect(onUpdate).toHaveBeenNthCalledWith(2, 'password');
 
   ReactTestRenderer.act(() => {
     renderer?.unmount();

@@ -75,6 +75,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   headers.set('Cache-Control', 'no-cache');
   headers.set('Connection', 'keep-alive');
   headers.set('Host', 'herpy.nu');
+  headers.set('Origin', 'http://herpy.nu');
   headers.set('Pragma', 'no-cache');
   headers.set('Upgrade-Insecure-Requests', '1');
   headers.set(

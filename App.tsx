@@ -22,6 +22,7 @@ import {SearchPage} from './src/pages/SearchPage';
 import {SearchResultPage} from './src/pages/SearchResultPage';
 import {SettingPage} from './src/pages/SettingPage';
 import {UserPage} from './src/pages/UserPage';
+import {UserUpdatePage, type UserUpdateMode} from './src/pages/UserUpdatePage';
 import {clearExpiredAuthorizationCookies} from './src/storage/authorization';
 import {queryClient} from './src/query/client';
 import {appActions, store, userActions} from './src/store';
@@ -35,6 +36,7 @@ type RootStackParamList = {
   login: undefined;
   settings: undefined;
   user: undefined;
+  userUpdate: {mode: UserUpdateMode};
   search: undefined;
   searchResult: {config: SearchConfig};
   imageDetail: {image: GalleryImage};
@@ -156,6 +158,16 @@ function AppShell() {
                   colors={colors}
                   onBack={() => navigation.goBack()}
                   onLogin={() => navigation.navigate('login')}
+                  onUpdate={mode => navigation.navigate('userUpdate', {mode})}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="userUpdate">
+              {({navigation, route}) => (
+                <UserUpdatePage
+                  colors={colors}
+                  mode={route.params.mode}
+                  onBack={() => navigation.goBack()}
                 />
               )}
             </Stack.Screen>

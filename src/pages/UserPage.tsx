@@ -2,6 +2,7 @@ import React, {useEffect, useMemo} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {
   RefreshControl,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,11 +18,13 @@ import type {UserData} from '../storage/user';
 import {userActions} from '../store';
 import {useAppDispatch, useAppSelector} from '../store/hooks';
 import type {ThemeColors} from '../tools/theme';
+import type {UserUpdateMode} from './UserUpdatePage';
 
 type UserPageProps = {
   colors: ThemeColors;
   onBack: () => void;
   onLogin: () => void;
+  onUpdate: (mode: UserUpdateMode) => void;
 };
 
 type ProfileField = {
@@ -71,7 +74,12 @@ const profileSections = (user: UserData): ProfileSection[] =>
     }))
     .filter(section => section.fields.length > 0);
 
-export const UserPage = ({colors, onBack, onLogin}: UserPageProps) => {
+export const UserPage = ({
+  colors,
+  onBack,
+  onLogin,
+  onUpdate,
+}: UserPageProps) => {
   const dispatch = useAppDispatch();
   const site = useAppSelector(state => state.app.site);
   const {data, error, isError, isFetching, isPending, refetch} = useQuery({
@@ -188,6 +196,39 @@ export const UserPage = ({colors, onBack, onLogin}: UserPageProps) => {
             </View>
           </View>
         ))}
+
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="修改信息"
+            onPress={() => onUpdate('profile')}
+            style={({pressed}) => [
+              styles.secondaryAction,
+              {
+                backgroundColor: pressed ? colors.primarySoft : colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.secondaryActionText, {color: colors.text}]}>
+              修改信息
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="修改密码"
+            onPress={() => onUpdate('password')}
+            style={({pressed}) => [
+              styles.primaryAction,
+              {
+                backgroundColor: colors.primary,
+                opacity: pressed ? 0.86 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.primaryActionText}>修改密码</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     );
   } else {
@@ -271,5 +312,34 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontSize: 15,
     lineHeight: 21,
+  },
+  actions: {
+    marginTop: 24,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  primaryAction: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryActionText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryAction: {
+    flex: 1,
+    minHeight: 46,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryActionText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
